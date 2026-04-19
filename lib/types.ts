@@ -32,6 +32,7 @@ export type StreamCandidate = {
   candidateId: string;
   providerLabel: string;
   manifestUrl: string;
+  providerPriority: number;
   originalStream: Record<string, unknown>;
   name: string;
   title: string;

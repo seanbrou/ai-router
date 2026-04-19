@@ -106,7 +106,7 @@ export function ConfigureClient() {
 
   // Gemini
   const [geminiApiKey, setGeminiApiKey] = useState("");
-  const [geminiModel, setGeminiModel] = useState("gemini-3-flash-preview");
+  const [geminiModel, setGeminiModel] = useState("gemini-2.5-flash");
 
   // Preferences
   const [qualities, setQualities] = useState<string[]>(DEFAULT_PREFERENCES.preferredQualities);

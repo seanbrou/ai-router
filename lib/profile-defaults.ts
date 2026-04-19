@@ -41,10 +41,10 @@ export const SIZE_OPTIONS = [
 ];
 
 export const GEMINI_MODEL_OPTIONS = [
-  { value: "gemini-3-flash-preview", label: "Gemini 3 Flash (Fast)" },
-  { value: "gemini-3-pro", label: "Gemini 3 Pro (Smart)" },
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+  { value: "gemini-flash-latest", label: "Gemini Flash Latest" },
+  { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" },
 ];
 
 export const PROFILE_NAME_OPTIONS = [

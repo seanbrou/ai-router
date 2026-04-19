@@ -2,6 +2,21 @@ import { InstallProfile, StreamCandidate } from "./types";
 
 const QUALITY_ORDER = ["2160p", "1080p", "720p", "480p"];
 
+function normalizeQuality(value: string | null) {
+  if (!value) return null;
+  const lower = value.toLowerCase();
+  if (lower === "4k") return "2160p";
+  return value;
+}
+
+function normalizeCodec(value: string | null) {
+  if (!value) return null;
+  const upper = value.toUpperCase();
+  if (upper === "H265" || upper === "X265") return "HEVC";
+  if (upper === "H264" || upper === "X264") return "AVC";
+  return upper;
+}
+
 function combinedText(stream: Record<string, unknown>) {
   return [stream.name, stream.title, stream.description]
     .filter((value): value is string => typeof value === "string" && value.length > 0)
@@ -20,6 +35,7 @@ function parseCodec(text: string) {
   if (/av1/i.test(text)) return "AV1";
   if (/x265|h265|hevc/i.test(text)) return "HEVC";
   if (/x264|h264|avc/i.test(text)) return "AVC";
+  if (/vp9/i.test(text)) return "VP9";
   return null;
 }
 
@@ -63,7 +79,11 @@ function parseLanguages(text: string) {
 
 function scorePreference(order: string[], value: string | null, maxPoints: number) {
   if (!value) return 0;
-  const index = order.findIndex((entry) => entry.toLowerCase() === value.toLowerCase());
+  const normalizedValue = normalizeQuality(normalizeCodec(value))?.toLowerCase() ?? value.toLowerCase();
+  const index = order.findIndex((entry) => {
+    const normalizedEntry = normalizeQuality(normalizeCodec(entry))?.toLowerCase() ?? entry.toLowerCase();
+    return normalizedEntry === normalizedValue;
+  });
   if (index === -1) return 0;
   return Math.max(maxPoints - index * 8, 2);
 }
@@ -85,6 +105,7 @@ export function normalizeStreamCandidate(
   stream: Record<string, unknown>,
   preferences: InstallProfile["preferences"],
   index: number,
+  providerPriority: number,
 ): StreamCandidate {
   const text = combinedText(stream);
   const quality = parseQuality(text);
@@ -114,12 +135,14 @@ export function normalizeStreamCandidate(
   if (preferences.strictness === "speed-first" && sizeGb) {
     deterministicScore -= Math.min(sizeGb * 1.5, 12);
   }
+  deterministicScore += Math.max(12 - providerPriority * 3, 0);
   deterministicScore -= index;
 
   return {
     candidateId: `${providerLabel}-${index}-${crypto.randomUUID()}`,
     providerLabel,
     manifestUrl,
+    providerPriority,
     originalStream: stream,
     name: typeof stream.name === "string" ? stream.name : providerLabel,
     title: typeof stream.title === "string" ? stream.title : providerLabel,
@@ -162,6 +185,22 @@ function extractText(response: unknown) {
   };
 
   return json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+}
+
+function parseJsonResponse(text: string) {
+  const trimmed = text.trim();
+  const fenced = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = fenced?.[1]?.trim() || trimmed;
+  return JSON.parse(candidate) as { rankings?: GeminiRanking[] };
+}
+
+function fingerprintCandidate(candidate: StreamCandidate) {
+  const source =
+    (typeof candidate.originalStream.infoHash === "string" && candidate.originalStream.infoHash) ||
+    (typeof candidate.originalStream.url === "string" && candidate.originalStream.url) ||
+    (typeof candidate.originalStream.externalUrl === "string" && candidate.originalStream.externalUrl) ||
+    `${candidate.providerLabel}:${candidate.title}:${candidate.quality ?? "auto"}`;
+  return String(source).toLowerCase();
 }
 
 export async function rerankWithGemini(args: {
@@ -208,6 +247,9 @@ export async function rerankWithGemini(args: {
           "x-goog-api-key": profile.gemini.apiKey,
         },
         body: JSON.stringify({
+          generationConfig: {
+            responseMimeType: "application/json",
+          },
           contents: [
             {
               role: "user",
@@ -223,7 +265,7 @@ export async function rerankWithGemini(args: {
     }
 
     const text = extractText(await response.json());
-    const parsed = JSON.parse(text) as { rankings?: GeminiRanking[] };
+    const parsed = parseJsonResponse(text);
     const rankings = new Map(
       (parsed.rankings ?? []).map((ranking) => [ranking.candidateId, ranking]),
     );
@@ -247,11 +289,24 @@ export async function rerankWithGemini(args: {
 }
 
 export function finalizeRanking(candidates: StreamCandidate[]) {
-  return candidates
-    .map((candidate) => ({
+  const deduped = new Map<string, StreamCandidate>();
+
+  for (const candidate of candidates) {
+    const normalized = {
       ...candidate,
       reason: candidate.reason || deterministicReason(candidate),
       finalScore: candidate.llmScore === null ? candidate.deterministicScore : candidate.finalScore,
+    };
+    const key = fingerprintCandidate(normalized);
+    const existing = deduped.get(key);
+    if (!existing || normalized.finalScore > existing.finalScore) {
+      deduped.set(key, normalized);
+    }
+  }
+
+  return Array.from(deduped.values())
+    .map((candidate) => ({
+      ...candidate,
     }))
     .sort((left, right) => right.finalScore - left.finalScore);
 }

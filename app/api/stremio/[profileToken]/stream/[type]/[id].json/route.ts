@@ -32,14 +32,16 @@ export async function GET(_: Request, { params }: RouteProps) {
     );
 
     const providerResponses = await Promise.allSettled(
-      enabledProviders.map(async (provider: ProviderDraft) => ({
+      enabledProviders.map(async (provider: ProviderDraft, providerIndex: number) => ({
         provider,
+        providerIndex,
         response: await fetchProviderStreams(provider, type, id),
       })),
     );
 
     const normalized = providerResponses.flatMap((result: PromiseSettledResult<{
       provider: ProviderDraft;
+      providerIndex: number;
       response: {
         streamUrl: string;
         streams: Record<string, unknown>[];
@@ -56,6 +58,7 @@ export async function GET(_: Request, { params }: RouteProps) {
           stream,
           profile.preferences,
           index,
+          result.value.providerIndex,
         ),
       );
     });
