@@ -1,6 +1,16 @@
 import { DebridioConfig, ProviderDraft } from "./types";
 
 export const TORRENTIO_DEFAULT_MANIFEST_URL = "https://torrentio.strem.fun/manifest.json";
+export const MEDIAFUSION_DEFAULT_MANIFEST_URL = "https://mediafusion.elfhosted.com/manifest.json";
+export const COMET_DEFAULT_MANIFEST_URL = "https://comet.elfhosted.com/manifest.json";
+export const SELHOSTED_TORRENTIO_MANIFEST_URL = "http://localhost:7000/manifest.json";
+
+export const TORBOX_PROVIDER_OPTIONS = [
+  { value: "realdebrid", label: "RealDebrid" },
+  { value: "alldebrid", label: "AllDebrid" },
+  { value: "premiumize", label: "Premiumize" },
+  { value: "torbox", label: "TorBox" },
+];
 
 export const DEBRIDIO_PROVIDER_OPTIONS = [
   { value: "realdebrid", label: "RealDebrid" },
@@ -113,6 +123,27 @@ export function hydrateProviderDraft(provider: ProviderDraft): ProviderDraft {
     };
   }
 
+  if (provider.presetKey === "mediafusion") {
+    return {
+      ...provider,
+      manifestUrl: provider.manifestUrl.trim() || MEDIAFUSION_DEFAULT_MANIFEST_URL,
+    };
+  }
+
+  if (provider.presetKey === "comet") {
+    return {
+      ...provider,
+      manifestUrl: provider.manifestUrl.trim() || COMET_DEFAULT_MANIFEST_URL,
+    };
+  }
+
+  if (provider.presetKey === "selfhosted-torrentio") {
+    return {
+      ...provider,
+      manifestUrl: provider.manifestUrl.trim() || SELHOSTED_TORRENTIO_MANIFEST_URL,
+    };
+  }
+
   if (provider.presetKey !== "debridio") {
     return provider;
   }
@@ -144,6 +175,18 @@ export function normalizeProviderDraftForSave(provider: ProviderDraft) {
 
   if (provider.presetKey === "torrentio" && !manifestUrl) {
     manifestUrl = TORRENTIO_DEFAULT_MANIFEST_URL;
+  }
+
+  if (provider.presetKey === "mediafusion" && !manifestUrl) {
+    manifestUrl = MEDIAFUSION_DEFAULT_MANIFEST_URL;
+  }
+
+  if (provider.presetKey === "comet" && !manifestUrl) {
+    manifestUrl = COMET_DEFAULT_MANIFEST_URL;
+  }
+
+  if (provider.presetKey === "selfhosted-torrentio" && !manifestUrl) {
+    manifestUrl = SELHOSTED_TORRENTIO_MANIFEST_URL;
   }
 
   if (provider.presetKey === "debridio") {

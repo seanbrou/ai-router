@@ -1,5 +1,5 @@
-import { ProfilePreferences, ProviderDraft } from "./types";
-import { createDefaultDebridioConfig, TORRENTIO_DEFAULT_MANIFEST_URL } from "./provider-presets";
+import { ProfilePreferences, ProviderDraft, TorboxConfig } from "./types";
+import { createDefaultDebridioConfig, TORRENTIO_DEFAULT_MANIFEST_URL, MEDIAFUSION_DEFAULT_MANIFEST_URL, COMET_DEFAULT_MANIFEST_URL, SELHOSTED_TORRENTIO_MANIFEST_URL } from "./provider-presets";
 
 /* ── Dropdown option exports ─────────────────────────────────────── */
 export const QUALITY_OPTIONS = [
@@ -61,8 +61,11 @@ export const PROFILE_NAME_OPTIONS = [
 
 export const PROVIDER_PRESET_OPTIONS = [
   { value: "torrentio", label: "Torrentio" },
-  { value: "debridio", label: "Debridio" },
+  { value: "mediafusion", label: "MediaFusion" },
   { value: "comet", label: "Comet" },
+  { value: "debridio", label: "Debridio" },
+  { value: "torbox", label: "TorBox" },
+  { value: "selfhosted-torrentio", label: "Torrentio (Self-Hosted)" },
   { value: "custom", label: "Custom" },
 ];
 
@@ -136,11 +139,35 @@ export function applyProfilePreset(presetValue: string): ProfilePreferences {
   };
 }
 
+export function createDefaultTorboxConfig(): TorboxConfig {
+  return {
+    apiKey: "",
+    disableUncached: false,
+    maxSize: "",
+    maxReturnPerQuality: "",
+  };
+}
+
 export function createProviderDraft(presetKey = "torrentio", sortOrder = 0): ProviderDraft {
+  const labelMap: Record<string, string> = {
+    torrentio: "Torrentio",
+    mediafusion: "MediaFusion",
+    comet: "Comet",
+    debridio: "Debridio",
+    torbox: "TorBox",
+    "selfhosted-torrentio": "Torrentio (Self-Hosted)",
+    custom: "Custom provider",
+  };
+  const urlMap: Record<string, string> = {
+    torrentio: TORRENTIO_DEFAULT_MANIFEST_URL,
+    mediafusion: MEDIAFUSION_DEFAULT_MANIFEST_URL,
+    comet: COMET_DEFAULT_MANIFEST_URL,
+    "selfhosted-torrentio": SELHOSTED_TORRENTIO_MANIFEST_URL,
+  };
   return {
     presetKey,
-    label: presetKey === "custom" ? "Custom provider" : presetKey[0].toUpperCase() + presetKey.slice(1),
-    manifestUrl: presetKey === "torrentio" ? TORRENTIO_DEFAULT_MANIFEST_URL : "",
+    label: labelMap[presetKey] ?? presetKey,
+    manifestUrl: urlMap[presetKey] ?? "",
     notes: null,
     enabled: true,
     sortOrder,
@@ -149,7 +176,11 @@ export function createProviderDraft(presetKey = "torrentio", sortOrder = 0): Pro
         ? {
             debridio: createDefaultDebridioConfig(),
           }
-        : undefined,
+        : presetKey === "torbox"
+          ? {
+              torbox: createDefaultTorboxConfig(),
+            }
+          : undefined,
   };
 }
 

@@ -13,6 +13,10 @@ import {
   DEBRIDIO_RESOLUTION_OPTIONS,
   hydrateProviderDraft,
   normalizeProviderDraftForSave,
+  MEDIAFUSION_DEFAULT_MANIFEST_URL,
+  COMET_DEFAULT_MANIFEST_URL,
+  SELHOSTED_TORRENTIO_MANIFEST_URL,
+  TORBOX_PROVIDER_OPTIONS,
 } from "@/lib/provider-presets";
 import {
   applyProfilePreset,
@@ -341,6 +345,23 @@ export function ConfigureClient() {
     );
   }
 
+  function updateTorboxConfig(
+    index: number,
+    patch: Partial<{ apiKey: string; disableUncached: boolean; maxSize: string; maxReturnPerQuality: string }>,
+  ) {
+    setProviders((cur) =>
+      cur.map((provider, i) => {
+        if (i !== index) return provider;
+        const current = provider.config?.torbox ?? { apiKey: "", disableUncached: false, maxSize: "", maxReturnPerQuality: "" };
+        const next = { ...current, ...patch };
+        return {
+          ...provider,
+          config: { torbox: next },
+        };
+      }),
+    );
+  }
+
   function addProvider() {
     setProviders((cur) => [...cur, createProviderDraft("torrentio", cur.length)]);
   }
@@ -368,8 +389,16 @@ export function ConfigureClient() {
   }
 
   function resolveManifestUrl(presetKey: string): string {
+    const defaults: Record<string, string> = {
+      torrentio: "https://torrentio.strem.fun/manifest.json",
+      mediafusion: MEDIAFUSION_DEFAULT_MANIFEST_URL,
+      comet: COMET_DEFAULT_MANIFEST_URL,
+      "selfhosted-torrentio": SELHOSTED_TORRENTIO_MANIFEST_URL,
+      debridio: "https://addon.debridio.com/<encoded-config>/manifest.json",
+      torbox: "https://torbox.app/manifest.json",
+    };
     const p = presets.find((x) => x.key === presetKey);
-    return p?.urlHint ?? "";
+    return p?.urlHint ?? defaults[presetKey] ?? "";
   }
 
   /* ── Render ────────────────────────────────────────────────────────── */
@@ -638,6 +667,48 @@ export function ConfigureClient() {
                       updateDebridioConfig(index, { excludedQualities: values })
                     }
                   />
+                </>
+              )}
+              {provider.presetKey === "torbox" && (
+                <>
+                  <label className="field">
+                    <span className="fieldLabel">TorBox API key</span>
+                    <input
+                      type="password"
+                      value={provider.config?.torbox?.apiKey ?? ""}
+                      onChange={(e) =>
+                        updateTorboxConfig(index, { apiKey: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label className="fieldInline">
+                    <input
+                      type="checkbox"
+                      checked={provider.config?.torbox?.disableUncached ?? false}
+                      onChange={(e) =>
+                        updateTorboxConfig(index, { disableUncached: e.target.checked })
+                      }
+                    />
+                    <span>Disable uncached content</span>
+                  </label>
+                  <label className="field">
+                    <span className="fieldLabel">Max size (GB)</span>
+                    <input
+                      inputMode="decimal"
+                      value={provider.config?.torbox?.maxSize ?? ""}
+                      onChange={(e) => updateTorboxConfig(index, { maxSize: e.target.value })}
+                    />
+                  </label>
+                  <label className="field">
+                    <span className="fieldLabel">Max results per quality</span>
+                    <input
+                      inputMode="numeric"
+                      value={provider.config?.torbox?.maxReturnPerQuality ?? ""}
+                      onChange={(e) =>
+                        updateTorboxConfig(index, { maxReturnPerQuality: e.target.value })
+                      }
+                    />
+                  </label>
                 </>
               )}
               <label className="field">

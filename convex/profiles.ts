@@ -94,8 +94,26 @@ function getProviderPresets() {
     {
       key: "comet",
       name: "Comet",
-      description: "Paste a fully configured Comet manifest URL.",
-      urlHint: "https://comet.elfhosted.com/<config>/manifest.json",
+      description: "Torrent/debrid addon. Works out of the box for public torrents, or paste a debrid-configured manifest URL.",
+      urlHint: "https://comet.elfhosted.com/manifest.json",
+    },
+    {
+      key: "mediafusion",
+      name: "MediaFusion",
+      description: "All-in-one addon: torrents, live TV, sports, and more. Works out of the box with sensible defaults.",
+      urlHint: "https://mediafusion.elfhosted.com/manifest.json",
+    },
+    {
+      key: "torbox",
+      name: "TorBox",
+      description: "TorBox debrid addon. Enter your TorBox API key for cached torrent streams.",
+      urlHint: "https://torbox.app/manifest.json",
+    },
+    {
+      key: "selfhosted-torrentio",
+      name: "Torrentio (Self-Hosted)",
+      description: "Your self-hosted Torrentio instance on this server. Zero-config, runs 24/7.",
+      urlHint: "http://localhost:7000/manifest.json",
     },
     {
       key: "custom",

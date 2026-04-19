@@ -20,6 +20,13 @@ export type DebridioConfig = {
   excludedQualities: string[];
 };
 
+export type TorboxConfig = {
+  apiKey: string;
+  disableUncached: boolean;
+  maxSize: string;
+  maxReturnPerQuality: string;
+};
+
 export type ProviderDraft = {
   presetKey: string;
   label: string;
@@ -29,6 +36,7 @@ export type ProviderDraft = {
   sortOrder: number;
   config?: {
     debridio?: DebridioConfig;
+    torbox?: TorboxConfig;
   };
 };
 
