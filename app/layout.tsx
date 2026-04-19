@@ -3,8 +3,8 @@ import { ConvexClientProvider } from "./convex-client-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AI Stream Sorter",
-  description: "Rank and sort your Stremio streams with AI-powered preference matching.",
+  title: "AI Sorter",
+  description: "Rank and sort your Stremio streams with AI.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

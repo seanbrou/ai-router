@@ -3,42 +3,49 @@ import Link from "next/link";
 export default function HomePage() {
   return (
     <main className="shell">
-      <section className="hero">
-        <div className="eyebrow">
-          <span className="eyebrowDot" />
-          AI-Powered Stremio Add-on
+      <header className="topBar">
+        <div className="topBarInner">
+          <span className="logo">
+            <span className="logoMark">◆</span>
+            AI Sorter
+          </span>
+          <span className="version">v1.0</span>
         </div>
-        <h1>AI Stream Sorter</h1>
+      </header>
+
+      <section className="hero">
+        <div className="badge">
+          <span className="badgeDot" />
+          Stremio Add-on
+        </div>
+        <h1>Rank your streams with AI</h1>
         <p>
-          Rank and sort your Stremio streams with AI. Set up your preferences in minutes — no coding required.
+          Set up your preferences, add your providers, and install a personal Stremio add-on
+          that sorts every stream to match your taste.
         </p>
         <div className="ctaRow">
           <Link className="button primary" href="/configure">
-            Get Started →
+            Get started →
           </Link>
         </div>
       </section>
 
       <section className="grid">
         <article className="panel">
-          <h2>
-            <span className="panelIcon">🎯</span> How It Works
-          </h2>
+          <h2>How it works</h2>
           <ul className="list">
-            <li>Pick your quality, language, and codec preferences</li>
-            <li>Add your Stremio add-on providers</li>
-            <li>Install the generated URL into Stremio</li>
-            <li>AI ranks every stream to match your taste</li>
+            <li>Pick quality, language, and codec preferences</li>
+            <li>Add Stremio add-on providers (Torrentio, Debridio, etc.)</li>
+            <li>Save to generate your personal add-on URL</li>
+            <li>Install the URL into Stremio on any device</li>
           </ul>
         </article>
 
         <article className="panel">
-          <h2>
-            <span className="panelIcon">✨</span> Features
-          </h2>
+          <h2>Features</h2>
           <ul className="list">
-            <li>Multi-provider support (Torrentio, Debridio, custom)</li>
-            <li>AI-powered stream ranking with Gemini</li>
+            <li>Multi-provider support with priority ordering</li>
+            <li>Gemini-powered AI stream ranking</li>
             <li>Quality-first, speed-first, or balanced modes</li>
             <li>Debrid and cached stream prioritization</li>
           </ul>

@@ -52,12 +52,36 @@ function ChipGroup({
               className={`chip ${active ? "active" : ""}`}
               onClick={() => toggle(opt.value)}
             >
-              {active && <span className="chipCheck">✓</span>}
               {opt.label}
             </button>
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/* ── Copy row ───────────────────────────────────────────────────────── */
+function CopyRow({
+  label,
+  url,
+  onCopy,
+  copied,
+}: {
+  label: string;
+  url: string;
+  onCopy: () => void;
+  copied: boolean;
+}) {
+  return (
+    <div className="urlRow">
+      <div className="urlInfo">
+        <span className="urlLabel">{label}</span>
+        <code className="urlText">{url}</code>
+      </div>
+      <button className="btnCopy" type="button" onClick={onCopy}>
+        {copied ? "✓" : "Copy"}
+      </button>
     </div>
   );
 }
@@ -84,7 +108,7 @@ export function ConfigureClient() {
   const [geminiApiKey, setGeminiApiKey] = useState("");
   const [geminiModel, setGeminiModel] = useState("gemini-3-flash-preview");
 
-  // Preferences (arrays, not CSV strings)
+  // Preferences
   const [qualities, setQualities] = useState<string[]>(DEFAULT_PREFERENCES.preferredQualities);
   const [languages, setLanguages] = useState<string[]>(DEFAULT_PREFERENCES.preferredLanguages);
   const [codecs, setCodecs] = useState<string[]>(DEFAULT_PREFERENCES.preferredCodecs);
@@ -102,7 +126,7 @@ export function ConfigureClient() {
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
 
-  /* ── Bootstrap / load existing profile ─────────────────────────────── */
+  /* ── Bootstrap ─────────────────────────────────────────────────────── */
   useEffect(() => {
     setOrigin(window.location.origin);
     const params = new URLSearchParams(window.location.search);
@@ -148,7 +172,6 @@ export function ConfigureClient() {
     setInstallToken(editorProfile.installToken);
   }, [editorProfile]);
 
-  /* ── Profile preset auto-name ──────────────────────────────────────── */
   useEffect(() => {
     if (profilePreset !== "custom") {
       const found = PROFILE_NAME_OPTIONS.find((o) => o.value === profilePreset);
@@ -178,7 +201,7 @@ export function ConfigureClient() {
       (p) => p.enabled && !/^https:\/\/.+\/manifest\.json(\?.*)?$/i.test(p.manifestUrl.trim()),
     );
     if (invalidProvider) {
-      setStatus(`Invalid manifest URL for ${invalidProvider.label}. Pick a preset or enter a valid URL.`);
+      setStatus(`Invalid manifest URL for ${invalidProvider.label}.`);
       return;
     }
 
@@ -200,9 +223,9 @@ export function ConfigureClient() {
         geminiModel,
       });
       setInstallToken(response.installToken);
-      setStatus("Profile saved ✓");
+      setStatus("Profile saved");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to save profile.");
+      setStatus(error instanceof Error ? error.message : "Failed to save.");
     }
   }
 
@@ -211,9 +234,9 @@ export function ConfigureClient() {
     try {
       const response = await rotateInstallToken({ manageToken });
       setInstallToken(response.installToken);
-      setStatus("Install token rotated ✓");
+      setStatus("Token rotated");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "Failed to rotate token.");
+      setStatus(error instanceof Error ? error.message : "Failed to rotate.");
     }
   }
 
@@ -237,7 +260,6 @@ export function ConfigureClient() {
     setTimeout(() => setCopied(null), 2000);
   }
 
-  /* ── Resolve manifest URL from preset ─────────────────────────────── */
   function resolveManifestUrl(presetKey: string): string {
     const p = presets.find((x) => x.key === presetKey);
     return p?.urlHint ?? "";
@@ -246,26 +268,36 @@ export function ConfigureClient() {
   /* ── Render ────────────────────────────────────────────────────────── */
   return (
     <main className="shell">
-      <section className="hero">
-        <div className="eyebrow">
-          <span className="eyebrowDot" />
-          Configure
+      {/* ── Header ───────────────────────────────────────────────── */}
+      <header className="topBar">
+        <div className="topBarInner">
+          <span className="logo">
+            <span className="logoMark">◆</span>
+            AI Sorter
+          </span>
+          <span className="version">v1.0</span>
         </div>
-        <h1>AI Stream Sorter</h1>
+      </header>
+
+      {/* ── Hero ─────────────────────────────────────────────────── */}
+      <section className="hero">
+        <div className="badge">
+          <span className="badgeDot" />
+          Stremio Add-on
+        </div>
+        <h1>Configure your AI stream sorter</h1>
         <p>
-          Pick your preferences from the menus below — no typing needed. Save, then install your
-          personal add-on into Stremio.
+          Pick your preferences below. Save to generate your personal add-on URL for Stremio.
         </p>
       </section>
 
-      {/* ── Profile ──────────────────────────────────────────────── */}
+      {/* ── Profile + Preferences ────────────────────────────────── */}
       <section className="grid">
         <article className="panel">
-          <h2>
-            <span className="panelIcon">👤</span> Profile
-          </h2>
+          <h2>Profile</h2>
+
           <label className="field">
-            <span className="fieldLabel">Profile</span>
+            <span className="fieldLabel">Profile preset</span>
             <select value={profilePreset} onChange={(e) => setProfilePreset(e.target.value)}>
               {PROFILE_NAME_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -274,8 +306,9 @@ export function ConfigureClient() {
               ))}
             </select>
           </label>
+
           <label className="field">
-            <span className="fieldLabel">AI Model</span>
+            <span className="fieldLabel">AI model</span>
             <select value={geminiModel} onChange={(e) => setGeminiModel(e.target.value)}>
               {GEMINI_MODEL_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -284,8 +317,9 @@ export function ConfigureClient() {
               ))}
             </select>
           </label>
+
           <label className="field">
-            <span className="fieldLabel">Gemini API Key</span>
+            <span className="fieldLabel">Gemini API key</span>
             <input
               type="password"
               placeholder="AIza..."
@@ -295,11 +329,8 @@ export function ConfigureClient() {
           </label>
         </article>
 
-        {/* ── Preferences ─────────────────────────────────────────── */}
         <article className="panel">
-          <h2>
-            <span className="panelIcon">⚙️</span> Preferences
-          </h2>
+          <h2>Preferences</h2>
 
           <ChipGroup
             label="Qualities"
@@ -323,7 +354,7 @@ export function ConfigureClient() {
           />
 
           <label className="field">
-            <span className="fieldLabel">Max File Size</span>
+            <span className="fieldLabel">Max file size</span>
             <select value={maxSizeGb} onChange={(e) => setMaxSizeGb(e.target.value)}>
               {SIZE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -334,14 +365,14 @@ export function ConfigureClient() {
           </label>
 
           <label className="field">
-            <span className="fieldLabel">Ranking Strategy</span>
+            <span className="fieldLabel">Ranking strategy</span>
             <select
               value={strictness}
               onChange={(e) => setStrictness(e.target.value as ProfilePreferences["strictness"])}
             >
-              <option value="balanced">⚖️ Balanced</option>
-              <option value="quality-first">🎬 Quality First</option>
-              <option value="speed-first">⚡ Speed First</option>
+              <option value="balanced">Balanced</option>
+              <option value="quality-first">Quality first</option>
+              <option value="speed-first">Speed first</option>
             </select>
           </label>
 
@@ -366,10 +397,8 @@ export function ConfigureClient() {
       </section>
 
       {/* ── Providers ────────────────────────────────────────────── */}
-      <section className="panel" style={{ marginTop: 24 }}>
-        <h2>
-          <span className="panelIcon">📡</span> Providers
-        </h2>
+      <section className="panel" style={{ marginTop: 20 }}>
+        <h2>Providers</h2>
         {providers.map((provider, index) => {
           const activePreset = presets.find((x) => x.key === provider.presetKey);
           return (
@@ -377,7 +406,7 @@ export function ConfigureClient() {
               <div className="providerHeader">
                 <span className="providerBadge">#{index + 1}</span>
                 <button className="btnRemove" type="button" onClick={() => removeProvider(index)}>
-                  ✕
+                  Remove
                 </button>
               </div>
               <label className="field">
@@ -402,7 +431,7 @@ export function ConfigureClient() {
                 </select>
               </label>
               {activePreset && (
-                <p className="hint">💡 {activePreset.description}</p>
+                <p className="hint">{activePreset.description}</p>
               )}
               <label className="field">
                 <span className="fieldLabel">Manifest URL</span>
@@ -424,23 +453,21 @@ export function ConfigureClient() {
           );
         })}
         <div className="ctaRow">
-          <button className="button secondary" type="button" onClick={addProvider}>
-            + Add Provider
+          <button className="button ghost" type="button" onClick={addProvider}>
+            + Add provider
           </button>
         </div>
       </section>
 
       {/* ── Install ──────────────────────────────────────────────── */}
-      <section className="panel installPanel" style={{ marginTop: 24 }}>
-        <h2>
-          <span className="panelIcon">🚀</span> Install
-        </h2>
+      <section className="panel installPanel" style={{ marginTop: 20 }}>
+        <h2>Install</h2>
 
         {manageUrl && (
           <CopyRow label="Manage URL" url={manageUrl} onCopy={() => copyUrl(manageUrl, "manage")} copied={copied === "manage"} />
         )}
         {installUrl && (
-          <CopyRow label="Install Page" url={installUrl} onCopy={() => copyUrl(installUrl, "install")} copied={copied === "install"} />
+          <CopyRow label="Install page" url={installUrl} onCopy={() => copyUrl(installUrl, "install")} copied={copied === "install"} />
         )}
         {manifestUrl && (
           <CopyRow label="Manifest URL" url={manifestUrl} onCopy={() => copyUrl(manifestUrl, "manifest")} copied={copied === "manifest"} />
@@ -448,39 +475,14 @@ export function ConfigureClient() {
 
         <div className="ctaRow">
           <button className="button primary" type="button" disabled={bootstrapping} onClick={handleSave}>
-            Save Profile
+            Save profile
           </button>
-          <button className="button secondary" type="button" disabled={!manageToken} onClick={handleRotate}>
-            Rotate Token
+          <button className="button ghost" type="button" disabled={!manageToken} onClick={handleRotate}>
+            Rotate token
           </button>
         </div>
-        {status && <p className={`statusMsg ${status.includes("✓") ? "ok" : "err"}`}>{status}</p>}
+        {status && <p className="statusMsg">{status}</p>}
       </section>
     </main>
-  );
-}
-
-/* ── Copy row sub-component ─────────────────────────────────────────── */
-function CopyRow({
-  label,
-  url,
-  onCopy,
-  copied,
-}: {
-  label: string;
-  url: string;
-  onCopy: () => void;
-  copied: boolean;
-}) {
-  return (
-    <div className="urlRow">
-      <div className="urlInfo">
-        <span className="urlLabel">{label}</span>
-        <code className="urlText">{url}</code>
-      </div>
-      <button className="btnCopy" type="button" onClick={onCopy}>
-        {copied ? "✓ Copied" : "Copy"}
-      </button>
-    </div>
   );
 }
