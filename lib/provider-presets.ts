@@ -1,6 +1,13 @@
 import { DebridioConfig, ProviderDraft } from "./types";
 
 export const TORRENTIO_DEFAULT_MANIFEST_URL = "https://torrentio.strem.fun/manifest.json";
+
+export const TORRENTIO_INSTANCES = [
+  { key: "official", url: "https://torrentio.strem.fun/manifest.json" },
+  { key: "elfhosted", url: "https://torrentio.elfhosted.com/manifest.json" },
+  { key: "lite", url: "https://torrentio.strem.fun/lite/manifest.json" },
+];
+
 export const MEDIAFUSION_DEFAULT_MANIFEST_URL = "https://mediafusion.elfhosted.com/manifest.json";
 export const COMET_DEFAULT_MANIFEST_URL = "https://comet.elfhosted.com/manifest.json";
 

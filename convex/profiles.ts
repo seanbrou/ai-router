@@ -82,7 +82,7 @@ function getProviderPresets() {
     {
       key: "torrentio",
       name: "Torrentio",
-      description: "Uses the default Torrentio manifest automatically. You can still override it with a custom manifest URL.",
+      description: "The most popular Stremio addon. Automatically rotates through multiple hosted instances (official, ElfHosted, Lite) so it stays working even if one goes down.",
       urlHint: "https://torrentio.strem.fun/manifest.json",
     },
     {
