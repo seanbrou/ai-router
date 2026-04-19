@@ -15,6 +15,38 @@ export const DEBRIDIO_PROVIDER_OPTIONS = [
 const DEBRIDIO_DEFAULT_RESOLUTIONS = ["4k", "1440p", "1080p", "720p", "480p", "360p", "unknown"];
 const DEBRIDIO_DEFAULT_EXCLUDED_QUALITIES = ["TeleCine", "SCR", "TeleSync", "CAM"];
 
+export const DEBRIDIO_RESOLUTION_OPTIONS = [
+  { value: "4k", label: "4K" },
+  { value: "1440p", label: "1440p" },
+  { value: "1080p", label: "1080p" },
+  { value: "720p", label: "720p" },
+  { value: "480p", label: "480p" },
+  { value: "360p", label: "360p" },
+  { value: "unknown", label: "Unknown" },
+];
+
+export const DEBRIDIO_QUALITY_OPTIONS = [
+  { value: "BluRay REMUX", label: "BluRay REMUX" },
+  { value: "BluRay", label: "BluRay" },
+  { value: "UHDRip", label: "UHDRip" },
+  { value: "HDRip", label: "HDRip" },
+  { value: "WEB-DL", label: "WEB-DL" },
+  { value: "WEBRip", label: "WEBRip" },
+  { value: "BDRip", label: "BDRip" },
+  { value: "BRRip", label: "BRRip" },
+  { value: "DVDRip", label: "DVDRip" },
+  { value: "DVD", label: "DVD" },
+  { value: "HDTV", label: "HDTV" },
+  { value: "SATRip", label: "SATRip" },
+  { value: "TVRip", label: "TVRip" },
+  { value: "R5", label: "R5" },
+  { value: "PPVRip", label: "PPVRip" },
+  { value: "TeleCine", label: "TeleCine" },
+  { value: "TeleSync", label: "TeleSync" },
+  { value: "SCR", label: "SCR" },
+  { value: "CAM", label: "CAM" },
+];
+
 type SerializedProviderNotes = {
   kind: "provider-config";
   presetKey: string;

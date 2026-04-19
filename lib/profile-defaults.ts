@@ -42,6 +42,8 @@ export const SIZE_OPTIONS = [
 ];
 
 export const GEMINI_MODEL_OPTIONS = [
+  { value: "gemini-3-flash-preview", label: "Gemini 3 Flash Preview" },
+  { value: "gemini-3-pro-preview", label: "Gemini 3 Pro Preview" },
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
   { value: "gemini-flash-latest", label: "Gemini Flash Latest" },
@@ -73,7 +75,66 @@ export const DEFAULT_PREFERENCES: ProfilePreferences = {
   preferDebrid: true,
   preferCached: true,
   strictness: "balanced",
+  customPrompt: null,
 };
+
+export const PROFILE_PRESET_DEFAULTS: Record<string, Partial<ProfilePreferences> & { name: string }> = {
+  "My AI Sorter Profile": {
+    name: "My AI Sorter Profile",
+    strictness: "balanced",
+    customPrompt: null,
+  },
+  "Movie Night": {
+    name: "Movie Night",
+    preferredQualities: ["2160p", "1080p"],
+    preferredLanguages: ["en"],
+    preferredCodecs: ["HEVC", "AV1"],
+    preferDebrid: true,
+    preferCached: true,
+    strictness: "quality-first",
+    customPrompt: null,
+  },
+  "Anime Watchlist": {
+    name: "Anime Watchlist",
+    preferredQualities: ["1080p", "720p"],
+    preferredLanguages: ["ja", "en"],
+    preferredCodecs: ["AV1", "HEVC", "AVC"],
+    preferDebrid: true,
+    preferCached: true,
+    strictness: "balanced",
+    customPrompt: "Prefer dual-audio or original Japanese audio releases when available, and slightly favor smaller fast-start encodes over giant remuxes.",
+  },
+  "Quality Purist": {
+    name: "Quality Purist",
+    preferredQualities: ["2160p", "1080p"],
+    preferredLanguages: ["en"],
+    preferredCodecs: ["AV1", "HEVC"],
+    preferDebrid: true,
+    preferCached: true,
+    strictness: "quality-first",
+    customPrompt: "Strongly favor the cleanest video source, premium codecs, HDR, Dolby Vision, and large high-bitrate releases over convenience.",
+  },
+  "Quick Stream": {
+    name: "Quick Stream",
+    preferredQualities: ["1080p", "720p", "480p"],
+    preferredLanguages: ["en"],
+    preferredCodecs: ["AVC", "HEVC", "AV1"],
+    maxSizeGb: 10,
+    preferDebrid: true,
+    preferCached: true,
+    strictness: "speed-first",
+    customPrompt: "Bias toward streams that are most likely to start immediately and play smoothly, even if they are not the absolute highest quality.",
+  },
+};
+
+export function applyProfilePreset(presetValue: string): ProfilePreferences {
+  const preset = PROFILE_PRESET_DEFAULTS[presetValue];
+  return {
+    ...DEFAULT_PREFERENCES,
+    ...(preset ?? {}),
+    customPrompt: preset?.customPrompt ?? null,
+  };
+}
 
 export function createProviderDraft(presetKey = "torrentio", sortOrder = 0): ProviderDraft {
   return {

@@ -1,6 +1,7 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { finalizeRanking, normalizeStreamCandidate } from "./stream-ranking";
 import { DEFAULT_PREFERENCES } from "./profile-defaults";
+import { rerankWithGemini } from "./stream-ranking";
 
 describe("normalizeStreamCandidate", () => {
   test("extracts playback signals from provider stream text", () => {
@@ -130,5 +131,83 @@ describe("finalizeRanking", () => {
 
     expect(ranked).toHaveLength(1);
     expect(ranked[0]?.candidateId).toBe("a");
+  });
+});
+
+describe("rerankWithGemini", () => {
+  test("includes the custom prompt in the Gemini request", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    rankings: [
+                      {
+                        candidateId: "candidate-1",
+                        score: 90,
+                        reason: "Matches the user's custom prompt.",
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    await rerankWithGemini({
+      mediaLabel: "Example Movie",
+      profile: {
+        name: "Profile",
+        installToken: "token",
+        providers: [],
+        preferences: {
+          ...DEFAULT_PREFERENCES,
+          strictness: "custom-prompt",
+          customPrompt: "Always prefer the cleanest HDR release.",
+        },
+        gemini: {
+          apiKey: "key",
+          model: "gemini-3-flash-preview",
+        },
+      },
+      candidates: [
+        {
+          candidateId: "candidate-1",
+          providerLabel: "One",
+          manifestUrl: "https://example.com/manifest.json",
+          providerPriority: 0,
+          originalStream: {},
+          name: "A",
+          title: "A",
+          description: "A",
+          quality: "1080p",
+          codec: "HEVC",
+          hdr: "HDR",
+          languages: ["en"],
+          sizeGb: 4,
+          seeders: 10,
+          isCached: true,
+          isDebrid: true,
+          deterministicScore: 40,
+          llmScore: null,
+          finalScore: 40,
+          reason: "",
+        },
+      ],
+    });
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    expect(body.contents[0].parts[0].text).toContain("Always prefer the cleanest HDR release.");
+
+    vi.unstubAllGlobals();
   });
 });

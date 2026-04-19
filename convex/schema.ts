@@ -12,7 +12,9 @@ const preferenceValidator = v.object({
     v.literal("balanced"),
     v.literal("quality-first"),
     v.literal("speed-first"),
+    v.literal("custom-prompt"),
   ),
+  customPrompt: v.optional(v.union(v.string(), v.null())),
 });
 
 export default defineSchema({

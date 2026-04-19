@@ -9,10 +9,13 @@ import {
   buildDebridioManifestUrl,
   createDefaultDebridioConfig,
   DEBRIDIO_PROVIDER_OPTIONS,
+  DEBRIDIO_QUALITY_OPTIONS,
+  DEBRIDIO_RESOLUTION_OPTIONS,
   hydrateProviderDraft,
   normalizeProviderDraftForSave,
 } from "@/lib/provider-presets";
 import {
+  applyProfilePreset,
   QUALITY_OPTIONS,
   LANGUAGE_OPTIONS,
   CODEC_OPTIONS,
@@ -113,7 +116,8 @@ export function ConfigureClient() {
 
   // Gemini
   const [geminiApiKey, setGeminiApiKey] = useState("");
-  const [geminiModel, setGeminiModel] = useState("gemini-2.5-flash");
+  const [geminiModel, setGeminiModel] = useState("gemini-3-flash-preview");
+  const [customGeminiModel, setCustomGeminiModel] = useState("");
 
   // Preferences
   const [qualities, setQualities] = useState<string[]>(DEFAULT_PREFERENCES.preferredQualities);
@@ -123,6 +127,7 @@ export function ConfigureClient() {
   const [preferDebrid, setPreferDebrid] = useState(DEFAULT_PREFERENCES.preferDebrid);
   const [preferCached, setPreferCached] = useState(DEFAULT_PREFERENCES.preferCached);
   const [strictness, setStrictness] = useState<ProfilePreferences["strictness"]>("balanced");
+  const [customPrompt, setCustomPrompt] = useState(DEFAULT_PREFERENCES.customPrompt ?? "");
 
   // Providers
   const [providers, setProviders] = useState<ProviderDraft[]>([createProviderDraft("torrentio", 0)]);
@@ -175,14 +180,36 @@ export function ConfigureClient() {
     setPreferDebrid(editorProfile.preferences.preferDebrid);
     setPreferCached(editorProfile.preferences.preferCached);
     setStrictness(editorProfile.preferences.strictness);
-    setGeminiModel(editorProfile.gemini.model);
+    setCustomPrompt(editorProfile.preferences.customPrompt ?? "");
+    if (GEMINI_MODEL_OPTIONS.some((option) => option.value === editorProfile.gemini.model)) {
+      setGeminiModel(editorProfile.gemini.model);
+      setCustomGeminiModel("");
+    } else {
+      setGeminiModel("gemini-3-flash-preview");
+      setCustomGeminiModel(editorProfile.gemini.model);
+    }
     setInstallToken(editorProfile.installToken);
   }, [editorProfile]);
 
   useEffect(() => {
     if (profilePreset !== "custom") {
       const found = PROFILE_NAME_OPTIONS.find((o) => o.value === profilePreset);
-      if (found) setProfileName(found.value);
+      if (found) {
+        const presetPreferences = applyProfilePreset(found.value);
+        setProfileName(found.value);
+        setQualities(presetPreferences.preferredQualities);
+        setLanguages(presetPreferences.preferredLanguages);
+        setCodecs(presetPreferences.preferredCodecs);
+        setMaxSizeGb(
+          presetPreferences.maxSizeGb !== null && presetPreferences.maxSizeGb !== undefined
+            ? String(presetPreferences.maxSizeGb)
+            : "",
+        );
+        setPreferDebrid(presetPreferences.preferDebrid);
+        setPreferCached(presetPreferences.preferCached);
+        setStrictness(presetPreferences.strictness);
+        setCustomPrompt(presetPreferences.customPrompt ?? "");
+      }
     }
   }, [profilePreset]);
 
@@ -239,6 +266,7 @@ export function ConfigureClient() {
           preferDebrid,
           preferCached,
           strictness,
+          customPrompt: customPrompt.trim() || null,
         },
         providers: providersToSave.map((p, i) => ({
           ...p,
@@ -246,7 +274,7 @@ export function ConfigureClient() {
           notes: p.notes?.trim() || null,
         })),
         geminiApiKey: geminiApiKey.trim() || null,
-        geminiModel,
+        geminiModel: customGeminiModel.trim() || geminiModel,
       });
       setInstallToken(response.installToken);
       setStatus("Profile saved");
@@ -327,6 +355,18 @@ export function ConfigureClient() {
     setTimeout(() => setCopied(null), 2000);
   }
 
+  function openStremioWeb() {
+    if (!manifestUrl) return;
+    window.open("https://web.strem.io/#/addons", "_blank", "noopener,noreferrer");
+    copyUrl(manifestUrl, "manifest");
+    setStatus("Opened Stremio Web and copied the manifest URL.");
+  }
+
+  function openStremioApp() {
+    if (!manifestUrl) return;
+    window.open(`stremio://${manifestUrl.replace(/^https?:\/\//, "")}`, "_self");
+  }
+
   function resolveManifestUrl(presetKey: string): string {
     const p = presets.find((x) => x.key === presetKey);
     return p?.urlHint ?? "";
@@ -384,6 +424,14 @@ export function ConfigureClient() {
               ))}
             </select>
           </label>
+          <label className="field">
+            <span className="fieldLabel">Custom Gemini model ID</span>
+            <input
+              placeholder="Optional, e.g. a future Gemini 3.1 model code"
+              value={customGeminiModel}
+              onChange={(e) => setCustomGeminiModel(e.target.value)}
+            />
+          </label>
 
           <label className="field">
             <span className="fieldLabel">Gemini API key</span>
@@ -440,7 +488,17 @@ export function ConfigureClient() {
               <option value="balanced">Balanced</option>
               <option value="quality-first">Quality first</option>
               <option value="speed-first">Speed first</option>
+              <option value="custom-prompt">Custom prompt</option>
             </select>
+          </label>
+          <label className="field">
+            <span className="fieldLabel">Custom ranking prompt</span>
+            <textarea
+              rows={4}
+              placeholder="Tell Gemini exactly how to rank streams for you."
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+            />
           </label>
 
           <label className="fieldInline">
@@ -538,6 +596,48 @@ export function ConfigureClient() {
                       }
                     />
                   </label>
+                  <label className="fieldInline">
+                    <input
+                      type="checkbox"
+                      checked={provider.config?.debridio?.disableUncached ?? false}
+                      onChange={(e) =>
+                        updateDebridioConfig(index, { disableUncached: e.target.checked })
+                      }
+                    />
+                    <span>Disable uncached content</span>
+                  </label>
+                  <label className="field">
+                    <span className="fieldLabel">Max size (GB)</span>
+                    <input
+                      inputMode="decimal"
+                      value={provider.config?.debridio?.maxSize ?? ""}
+                      onChange={(e) => updateDebridioConfig(index, { maxSize: e.target.value })}
+                    />
+                  </label>
+                  <label className="field">
+                    <span className="fieldLabel">Max results per quality</span>
+                    <input
+                      inputMode="numeric"
+                      value={provider.config?.debridio?.maxReturnPerQuality ?? ""}
+                      onChange={(e) =>
+                        updateDebridioConfig(index, { maxReturnPerQuality: e.target.value })
+                      }
+                    />
+                  </label>
+                  <ChipGroup
+                    label="Debridio resolutions"
+                    options={DEBRIDIO_RESOLUTION_OPTIONS}
+                    selected={provider.config?.debridio?.resolutions ?? []}
+                    onChange={(values) => updateDebridioConfig(index, { resolutions: values })}
+                  />
+                  <ChipGroup
+                    label="Exclude source qualities"
+                    options={DEBRIDIO_QUALITY_OPTIONS}
+                    selected={provider.config?.debridio?.excludedQualities ?? []}
+                    onChange={(values) =>
+                      updateDebridioConfig(index, { excludedQualities: values })
+                    }
+                  />
                 </>
               )}
               <label className="field">
@@ -581,6 +681,12 @@ export function ConfigureClient() {
         )}
 
         <div className="ctaRow">
+          <button className="button ghost" type="button" disabled={!manifestUrl} onClick={openStremioWeb}>
+            Open in Stremio Web
+          </button>
+          <button className="button ghost" type="button" disabled={!manifestUrl} onClick={openStremioApp}>
+            Open in Stremio App
+          </button>
           <button className="button primary" type="button" disabled={bootstrapping} onClick={handleSave}>
             Save profile
           </button>

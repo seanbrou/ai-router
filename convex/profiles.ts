@@ -12,7 +12,9 @@ const preferenceValidator = v.object({
     v.literal("balanced"),
     v.literal("quality-first"),
     v.literal("speed-first"),
+    v.literal("custom-prompt"),
   ),
+  customPrompt: v.optional(v.union(v.string(), v.null())),
 });
 
 const providerInputValidator = v.object({
@@ -71,6 +73,7 @@ function defaultPreferences() {
     preferDebrid: true,
     preferCached: true,
     strictness: "balanced" as const,
+    customPrompt: null,
   };
 }
 
@@ -168,7 +171,7 @@ export const createAnonymousProfile = mutation({
     await ctx.db.insert("profileSecrets", {
       profileId,
       geminiApiKey: null,
-      geminiModel: "gemini-2.5-flash",
+      geminiModel: "gemini-3-flash-preview",
       createdAt: timestamp,
       updatedAt: timestamp,
     });
@@ -211,7 +214,7 @@ export const getEditorProfile = query({
       })),
       gemini: {
         hasApiKey: Boolean(secret?.geminiApiKey),
-        model: secret?.geminiModel ?? "gemini-2.5-flash",
+        model: secret?.geminiModel ?? "gemini-3-flash-preview",
       },
     };
   },
@@ -270,14 +273,14 @@ export const saveProfile = mutation({
     if (secret) {
       await ctx.db.patch(secret._id, {
         geminiApiKey: args.geminiApiKey,
-        geminiModel: args.geminiModel.trim() || "gemini-2.5-flash",
+        geminiModel: args.geminiModel.trim() || "gemini-3-flash-preview",
         updatedAt: timestamp,
       });
     } else {
       await ctx.db.insert("profileSecrets", {
         profileId: profile._id,
         geminiApiKey: args.geminiApiKey,
-        geminiModel: args.geminiModel.trim() || "gemini-2.5-flash",
+        geminiModel: args.geminiModel.trim() || "gemini-3-flash-preview",
         createdAt: timestamp,
         updatedAt: timestamp,
       });
@@ -389,7 +392,7 @@ export const getInstallProfile = query({
       })),
       gemini: {
         apiKey: secret?.geminiApiKey ?? null,
-        model: secret?.geminiModel ?? "gemini-2.5-flash",
+        model: secret?.geminiModel ?? "gemini-3-flash-preview",
       },
     };
   },

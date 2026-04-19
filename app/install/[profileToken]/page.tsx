@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { InstallActions } from "./install-actions";
 
 type InstallPageProps = {
   params: Promise<{
@@ -14,6 +15,7 @@ export default async function InstallPage({ params }: InstallPageProps) {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.trim() || `${protocol}://${host}`;
   const manifestUrl = `${baseUrl}/api/stremio/${profileToken}/manifest.json`;
   const stremioDeepLink = `stremio://${manifestUrl.replace(/^https?:\/\//, "")}`;
+  const stremioWebUrl = "https://web.strem.io/#/addons";
 
   return (
     <main className="shell">
@@ -26,6 +28,11 @@ export default async function InstallPage({ params }: InstallPageProps) {
       </section>
 
       <section className="panel" style={{ marginTop: 24 }}>
+        <InstallActions
+          manifestUrl={manifestUrl}
+          stremioDeepLink={stremioDeepLink}
+          stremioWebUrl={stremioWebUrl}
+        />
         <h2>Manifest URL</h2>
         <p className="code">{manifestUrl}</p>
         <h2 style={{ marginTop: 24 }}>Deep Link</h2>

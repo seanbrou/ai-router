@@ -217,6 +217,9 @@ export async function rerankWithGemini(args: {
     "Rank these Stremio stream candidates for the user.",
     "Return JSON only in the format {\"rankings\":[{\"candidateId\":\"...\",\"score\":0-100,\"reason\":\"...\"}]}",
     "Prefer streams that match the user preferences and are likely to play cleanly.",
+    profile.preferences.customPrompt
+      ? `Custom user ranking instructions: ${profile.preferences.customPrompt}`
+      : null,
     JSON.stringify({
       media: mediaLabel,
       preferences: profile.preferences,
@@ -235,7 +238,9 @@ export async function rerankWithGemini(args: {
         deterministicScore: candidate.deterministicScore,
       })),
     }),
-  ].join("\n\n");
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join("\n\n");
 
   try {
     const response = await fetch(

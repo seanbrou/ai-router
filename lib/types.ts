@@ -5,7 +5,8 @@ export type ProfilePreferences = {
   maxSizeGb: number | null;
   preferDebrid: boolean;
   preferCached: boolean;
-  strictness: "balanced" | "quality-first" | "speed-first";
+  strictness: "balanced" | "quality-first" | "speed-first" | "custom-prompt";
+  customPrompt?: string | null;
 };
 
 export type DebridioConfig = {
