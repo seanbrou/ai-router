@@ -86,7 +86,13 @@ function getProviderPresets() {
       key: "debridio",
       name: "Debridio",
       description: "Paste a fully configured Debridio manifest URL.",
-      urlHint: "https://debridio.example/<config>/manifest.json",
+      urlHint: "https://debridio.adobotec.com/<config>/manifest.json",
+    },
+    {
+      key: "comet",
+      name: "Comet",
+      description: "Paste a fully configured Comet manifest URL.",
+      urlHint: "https://comet.elfhosted.com/<config>/manifest.json",
     },
     {
       key: "custom",
