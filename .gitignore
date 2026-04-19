@@ -16,7 +16,6 @@ yarn-error.log*
 pnpm-debug.log*
 .DS_Store
 Thumbs.db
-convex/_generated/
 tsconfig.tsbuildinfo
 .agents/
 .claude/
