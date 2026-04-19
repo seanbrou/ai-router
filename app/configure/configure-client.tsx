@@ -375,6 +375,16 @@ export function ConfigureClient() {
     setProviders((cur) => cur.filter((_, i) => i !== index));
   }
 
+  function moveProvider(index: number, direction: -1 | 1) {
+    const target = index + direction;
+    if (target < 0 || target >= providers.length) return;
+    setProviders((cur) => {
+      const next = [...cur];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }
+
   function copyUrl(url: string, label: string) {
     navigator.clipboard.writeText(url);
     setCopied(label);
@@ -563,6 +573,26 @@ export function ConfigureClient() {
             <div className="providerCard" key={provider.presetKey + index}>
               <div className="providerHeader">
                 <span className="providerBadge">#{index + 1}</span>
+                <div className="providerReorder">
+                  <button
+                    className="btnReorder"
+                    type="button"
+                    disabled={index === 0}
+                    onClick={() => moveProvider(index, -1)}
+                    title="Move up"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    className="btnReorder"
+                    type="button"
+                    disabled={index === providers.length - 1}
+                    onClick={() => moveProvider(index, 1)}
+                    title="Move down"
+                  >
+                    ▼
+                  </button>
+                </div>
                 <button className="btnRemove" type="button" onClick={() => removeProvider(index)}>
                   Remove
                 </button>
