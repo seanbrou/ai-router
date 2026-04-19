@@ -15,7 +15,6 @@ import {
   normalizeProviderDraftForSave,
   MEDIAFUSION_DEFAULT_MANIFEST_URL,
   COMET_DEFAULT_MANIFEST_URL,
-  SELHOSTED_TORRENTIO_MANIFEST_URL,
   TORBOX_PROVIDER_OPTIONS,
 } from "@/lib/provider-presets";
 import {
@@ -393,7 +392,6 @@ export function ConfigureClient() {
       torrentio: "https://torrentio.strem.fun/manifest.json",
       mediafusion: MEDIAFUSION_DEFAULT_MANIFEST_URL,
       comet: COMET_DEFAULT_MANIFEST_URL,
-      "selfhosted-torrentio": SELHOSTED_TORRENTIO_MANIFEST_URL,
       debridio: "https://addon.debridio.com/<encoded-config>/manifest.json",
       torbox: "https://torbox.app/manifest.json",
     };

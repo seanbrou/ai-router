@@ -110,12 +110,6 @@ function getProviderPresets() {
       urlHint: "https://torbox.app/manifest.json",
     },
     {
-      key: "selfhosted-torrentio",
-      name: "Torrentio (Self-Hosted)",
-      description: "Your self-hosted Torrentio instance on this server. Zero-config, runs 24/7.",
-      urlHint: "http://localhost:7000/manifest.json",
-    },
-    {
       key: "custom",
       name: "Custom compatible add-on",
       description: "Paste any compatible Stremio add-on manifest URL.",

@@ -1,5 +1,5 @@
 import { ProfilePreferences, ProviderDraft, TorboxConfig } from "./types";
-import { createDefaultDebridioConfig, TORRENTIO_DEFAULT_MANIFEST_URL, MEDIAFUSION_DEFAULT_MANIFEST_URL, COMET_DEFAULT_MANIFEST_URL, SELHOSTED_TORRENTIO_MANIFEST_URL } from "./provider-presets";
+import { createDefaultDebridioConfig, TORRENTIO_DEFAULT_MANIFEST_URL, MEDIAFUSION_DEFAULT_MANIFEST_URL, COMET_DEFAULT_MANIFEST_URL } from "./provider-presets";
 
 /* ── Dropdown option exports ─────────────────────────────────────── */
 export const QUALITY_OPTIONS = [
@@ -65,7 +65,6 @@ export const PROVIDER_PRESET_OPTIONS = [
   { value: "comet", label: "Comet" },
   { value: "debridio", label: "Debridio" },
   { value: "torbox", label: "TorBox" },
-  { value: "selfhosted-torrentio", label: "Torrentio (Self-Hosted)" },
   { value: "custom", label: "Custom" },
 ];
 
@@ -155,14 +154,12 @@ export function createProviderDraft(presetKey = "torrentio", sortOrder = 0): Pro
     comet: "Comet",
     debridio: "Debridio",
     torbox: "TorBox",
-    "selfhosted-torrentio": "Torrentio (Self-Hosted)",
     custom: "Custom provider",
   };
   const urlMap: Record<string, string> = {
     torrentio: TORRENTIO_DEFAULT_MANIFEST_URL,
     mediafusion: MEDIAFUSION_DEFAULT_MANIFEST_URL,
     comet: COMET_DEFAULT_MANIFEST_URL,
-    "selfhosted-torrentio": SELHOSTED_TORRENTIO_MANIFEST_URL,
   };
   return {
     presetKey,
