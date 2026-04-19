@@ -106,7 +106,7 @@ function getProviderPresets() {
     {
       key: "torbox",
       name: "TorBox",
-      description: "TorBox debrid addon. Enter your TorBox API key for cached torrent streams.",
+      description: "Enter your TorBox API key. The manifest URL is generated automatically — all other settings are configured in your TorBox account and apply instantly.",
       urlHint: "https://torbox.app/manifest.json",
     },
     {

@@ -7,6 +7,7 @@ import { createProviderDraft, DEFAULT_PREFERENCES } from "@/lib/profile-defaults
 import { DebridioConfig, ProfilePreferences, ProviderDraft } from "@/lib/types";
 import {
   buildDebridioManifestUrl,
+  buildTorboxManifestUrl,
   createDefaultDebridioConfig,
   DEBRIDIO_PROVIDER_OPTIONS,
   DEBRIDIO_QUALITY_OPTIONS,
@@ -15,6 +16,7 @@ import {
   normalizeProviderDraftForSave,
   MEDIAFUSION_DEFAULT_MANIFEST_URL,
   COMET_DEFAULT_MANIFEST_URL,
+  TORBOX_BASE_URL,
   TORBOX_PROVIDER_OPTIONS,
 } from "@/lib/provider-presets";
 import {
@@ -353,8 +355,12 @@ export function ConfigureClient() {
         if (i !== index) return provider;
         const current = provider.config?.torbox ?? { apiKey: "", disableUncached: false, maxSize: "", maxReturnPerQuality: "" };
         const next = { ...current, ...patch };
+        const hasKey = Boolean(next.apiKey.trim());
         return {
           ...provider,
+          manifestUrl: hasKey
+            ? buildTorboxManifestUrl(next.apiKey)
+            : `${TORBOX_BASE_URL}/<api-key>/manifest.json`,
           config: { torbox: next },
         };
       }),
@@ -709,14 +715,16 @@ export function ConfigureClient() {
                   </label>
                 </>
               )}
-              <label className="field">
-                <span className="fieldLabel">Manifest URL</span>
-                <input
-                  value={provider.manifestUrl}
-                  placeholder={resolveManifestUrl(provider.presetKey)}
-                  onChange={(e) => updateProvider(index, { manifestUrl: e.target.value })}
-                />
-              </label>
+              {provider.presetKey !== "torbox" && (
+                <label className="field">
+                  <span className="fieldLabel">Manifest URL</span>
+                  <input
+                    value={provider.manifestUrl}
+                    placeholder={resolveManifestUrl(provider.presetKey)}
+                    onChange={(e) => updateProvider(index, { manifestUrl: e.target.value })}
+                  />
+                </label>
+              )}
               <label className="fieldInline">
                 <input
                   type="checkbox"

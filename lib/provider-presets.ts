@@ -11,6 +11,7 @@ export const TORRENTIO_INSTANCES = [
 export const MEDIAFUSION_DEFAULT_MANIFEST_URL = "https://mediafusion.elfhosted.com/manifest.json";
 export const COMET_DEFAULT_MANIFEST_URL = "https://comet.elfhosted.com/manifest.json";
 
+export const TORBOX_BASE_URL = "https://stremio.torbox.app";
 export const TORBOX_PROVIDER_OPTIONS = [
   { value: "realdebrid", label: "RealDebrid" },
   { value: "alldebrid", label: "AllDebrid" },
@@ -121,6 +122,10 @@ export function buildDebridioManifestUrl(config: DebridioConfig) {
   return `https://addon.debridio.com/${encodeBase64(JSON.stringify(payload))}/manifest.json`;
 }
 
+export function buildTorboxManifestUrl(apiKey: string) {
+  return `${TORBOX_BASE_URL}/${apiKey.trim()}/manifest.json`;
+}
+
 export function hydrateProviderDraft(provider: ProviderDraft): ProviderDraft {
   if (provider.presetKey === "torrentio") {
     return {
@@ -140,6 +145,17 @@ export function hydrateProviderDraft(provider: ProviderDraft): ProviderDraft {
     return {
       ...provider,
       manifestUrl: provider.manifestUrl.trim() || COMET_DEFAULT_MANIFEST_URL,
+    };
+  }
+
+  if (provider.presetKey === "torbox") {
+    const torboxConfig = provider.config?.torbox;
+    const hasKey = Boolean(torboxConfig?.apiKey?.trim());
+    return {
+      ...provider,
+      manifestUrl: hasKey
+        ? buildTorboxManifestUrl(torboxConfig!.apiKey)
+        : provider.manifestUrl.trim() || `${TORBOX_BASE_URL}/<api-key>/manifest.json`,
     };
   }
 
@@ -182,6 +198,18 @@ export function normalizeProviderDraftForSave(provider: ProviderDraft) {
 
   if (provider.presetKey === "comet" && !manifestUrl) {
     manifestUrl = COMET_DEFAULT_MANIFEST_URL;
+  }
+
+  if (provider.presetKey === "torbox") {
+    const torboxConfig = provider.config?.torbox;
+    const hasKey = Boolean(torboxConfig?.apiKey?.trim());
+    if (hasKey && torboxConfig) {
+      manifestUrl = buildTorboxManifestUrl(torboxConfig.apiKey);
+    } else if (!manifestUrl || manifestUrl.includes("<api-key>")) {
+      return {
+        error: "TorBox needs your API key to generate the manifest URL.",
+      };
+    }
   }
 
   if (provider.presetKey === "debridio") {

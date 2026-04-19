@@ -1,5 +1,5 @@
 import { ProfilePreferences, ProviderDraft, TorboxConfig } from "./types";
-import { createDefaultDebridioConfig, TORRENTIO_DEFAULT_MANIFEST_URL, MEDIAFUSION_DEFAULT_MANIFEST_URL, COMET_DEFAULT_MANIFEST_URL } from "./provider-presets";
+import { createDefaultDebridioConfig, TORRENTIO_DEFAULT_MANIFEST_URL, MEDIAFUSION_DEFAULT_MANIFEST_URL, COMET_DEFAULT_MANIFEST_URL, TORBOX_BASE_URL } from "./provider-presets";
 
 /* ── Dropdown option exports ─────────────────────────────────────── */
 export const QUALITY_OPTIONS = [
@@ -160,6 +160,7 @@ export function createProviderDraft(presetKey = "torrentio", sortOrder = 0): Pro
     torrentio: TORRENTIO_DEFAULT_MANIFEST_URL,
     mediafusion: MEDIAFUSION_DEFAULT_MANIFEST_URL,
     comet: COMET_DEFAULT_MANIFEST_URL,
+    torbox: `${TORBOX_BASE_URL}/<api-key>/manifest.json`,
   };
   return {
     presetKey,
