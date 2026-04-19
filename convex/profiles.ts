@@ -79,14 +79,14 @@ function getProviderPresets() {
     {
       key: "torrentio",
       name: "Torrentio",
-      description: "Paste a fully configured Torrentio manifest URL.",
-      urlHint: "https://torrentio.strem.fun/<config>/manifest.json",
+      description: "Uses the default Torrentio manifest automatically. You can still override it with a custom manifest URL.",
+      urlHint: "https://torrentio.strem.fun/manifest.json",
     },
     {
       key: "debridio",
       name: "Debridio",
-      description: "Paste a fully configured Debridio manifest URL.",
-      urlHint: "https://debridio.adobotec.com/<config>/manifest.json",
+      description: "Enter your Debridio API key plus provider credentials, or paste a fully configured Debridio manifest URL.",
+      urlHint: "https://addon.debridio.com/<encoded-config>/manifest.json",
     },
     {
       key: "comet",

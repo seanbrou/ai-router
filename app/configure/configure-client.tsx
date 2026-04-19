@@ -4,7 +4,14 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { createProviderDraft, DEFAULT_PREFERENCES } from "@/lib/profile-defaults";
-import { ProfilePreferences, ProviderDraft } from "@/lib/types";
+import { DebridioConfig, ProfilePreferences, ProviderDraft } from "@/lib/types";
+import {
+  buildDebridioManifestUrl,
+  createDefaultDebridioConfig,
+  DEBRIDIO_PROVIDER_OPTIONS,
+  hydrateProviderDraft,
+  normalizeProviderDraftForSave,
+} from "@/lib/provider-presets";
 import {
   QUALITY_OPTIONS,
   LANGUAGE_OPTIONS,
@@ -156,7 +163,7 @@ export function ConfigureClient() {
     );
     setProviders(
       editorProfile.providers.length
-        ? editorProfile.providers
+        ? editorProfile.providers.map(hydrateProviderDraft)
         : [createProviderDraft("torrentio", 0)],
     );
     setQualities(editorProfile.preferences.preferredQualities);
@@ -197,7 +204,22 @@ export function ConfigureClient() {
   async function handleSave() {
     if (!manageToken) return;
 
-    const invalidProvider = providers.find(
+    const normalizedProviders = providers.map((provider, index) => {
+      const result = normalizeProviderDraftForSave({ ...provider, sortOrder: index });
+      return { ...result, label: provider.label };
+    });
+
+    const failedProvider = normalizedProviders.find((entry) => entry.error);
+    if (failedProvider?.error) {
+      setStatus(failedProvider.error);
+      return;
+    }
+
+    const providersToSave = normalizedProviders
+      .map((entry) => entry.provider)
+      .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+
+    const invalidProvider = providersToSave.find(
       (p) => p.enabled && !/^https:\/\/.+\/manifest\.json(\?.*)?$/i.test(p.manifestUrl.trim()),
     );
     if (invalidProvider) {
@@ -218,7 +240,11 @@ export function ConfigureClient() {
           preferCached,
           strictness,
         },
-        providers: providers.map((p, i) => ({ ...p, sortOrder: i, notes: p.notes?.trim() || null })),
+        providers: providersToSave.map((p, i) => ({
+          ...p,
+          sortOrder: i,
+          notes: p.notes?.trim() || null,
+        })),
         geminiApiKey: geminiApiKey.trim() || null,
         geminiModel,
       });
@@ -243,6 +269,47 @@ export function ConfigureClient() {
   function updateProvider(index: number, patch: Partial<ProviderDraft>) {
     setProviders((cur) =>
       cur.map((p, i) => (i === index ? { ...p, ...patch } : p)),
+    );
+  }
+
+  function replaceProvider(index: number, nextProvider: ProviderDraft) {
+    setProviders((cur) => cur.map((p, i) => (i === index ? nextProvider : p)));
+  }
+
+  function updateDebridioConfig(
+    index: number,
+    patch: Partial<DebridioConfig>,
+  ) {
+    setProviders((cur) =>
+      cur.map((provider, i) => {
+        if (i !== index) {
+          return provider;
+        }
+
+        const nextConfig: DebridioConfig = {
+          ...createDefaultDebridioConfig(),
+          ...(provider.config?.debridio ?? {}),
+          ...patch,
+        };
+
+        const hasRequiredKeys = Boolean(
+          nextConfig?.addonApiKey.trim() &&
+            nextConfig.provider.trim() &&
+            nextConfig.providerApiKey.trim(),
+        );
+
+        return {
+          ...provider,
+          manifestUrl: hasRequiredKeys
+            ? buildDebridioManifestUrl(nextConfig!)
+            : provider.manifestUrl.includes("addon.debridio.com")
+              ? ""
+              : provider.manifestUrl,
+          config: {
+            debridio: nextConfig,
+          },
+        };
+      }),
     );
   }
 
@@ -416,10 +483,11 @@ export function ConfigureClient() {
                   onChange={(e) => {
                     const key = e.target.value;
                     const preset = presets.find((x) => x.key === key);
-                    updateProvider(index, {
+                    replaceProvider(index, {
+                      ...createProviderDraft(key, index),
                       presetKey: key,
                       label: preset?.name ?? key,
-                      manifestUrl: preset?.urlHint ?? "",
+                      enabled: provider.enabled,
                     });
                   }}
                 >
@@ -432,6 +500,45 @@ export function ConfigureClient() {
               </label>
               {activePreset && (
                 <p className="hint">{activePreset.description}</p>
+              )}
+              {provider.presetKey === "debridio" && (
+                <>
+                  <label className="field">
+                    <span className="fieldLabel">Debridio API key</span>
+                    <input
+                      type="password"
+                      value={provider.config?.debridio?.addonApiKey ?? ""}
+                      onChange={(e) =>
+                        updateDebridioConfig(index, { addonApiKey: e.target.value })
+                      }
+                    />
+                  </label>
+                  <label className="field">
+                    <span className="fieldLabel">Debrid provider</span>
+                    <select
+                      value={provider.config?.debridio?.provider ?? "realdebrid"}
+                      onChange={(e) =>
+                        updateDebridioConfig(index, { provider: e.target.value })
+                      }
+                    >
+                      {DEBRIDIO_PROVIDER_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="field">
+                    <span className="fieldLabel">Provider API key</span>
+                    <input
+                      type="password"
+                      value={provider.config?.debridio?.providerApiKey ?? ""}
+                      onChange={(e) =>
+                        updateDebridioConfig(index, { providerApiKey: e.target.value })
+                      }
+                    />
+                  </label>
+                </>
               )}
               <label className="field">
                 <span className="fieldLabel">Manifest URL</span>

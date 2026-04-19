@@ -1,4 +1,5 @@
 import { ProfilePreferences, ProviderDraft } from "./types";
+import { createDefaultDebridioConfig, TORRENTIO_DEFAULT_MANIFEST_URL } from "./provider-presets";
 
 /* ── Dropdown option exports ─────────────────────────────────────── */
 export const QUALITY_OPTIONS = [
@@ -78,10 +79,16 @@ export function createProviderDraft(presetKey = "torrentio", sortOrder = 0): Pro
   return {
     presetKey,
     label: presetKey === "custom" ? "Custom provider" : presetKey[0].toUpperCase() + presetKey.slice(1),
-    manifestUrl: "",
+    manifestUrl: presetKey === "torrentio" ? TORRENTIO_DEFAULT_MANIFEST_URL : "",
     notes: null,
     enabled: true,
     sortOrder,
+    config:
+      presetKey === "debridio"
+        ? {
+            debridio: createDefaultDebridioConfig(),
+          }
+        : undefined,
   };
 }
 

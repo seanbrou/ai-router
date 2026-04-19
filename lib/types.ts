@@ -8,6 +8,17 @@ export type ProfilePreferences = {
   strictness: "balanced" | "quality-first" | "speed-first";
 };
 
+export type DebridioConfig = {
+  addonApiKey: string;
+  provider: string;
+  providerApiKey: string;
+  disableUncached: boolean;
+  maxSize: string;
+  maxReturnPerQuality: string;
+  resolutions: string[];
+  excludedQualities: string[];
+};
+
 export type ProviderDraft = {
   presetKey: string;
   label: string;
@@ -15,6 +26,9 @@ export type ProviderDraft = {
   notes: string | null;
   enabled: boolean;
   sortOrder: number;
+  config?: {
+    debridio?: DebridioConfig;
+  };
 };
 
 export type InstallProfile = {
