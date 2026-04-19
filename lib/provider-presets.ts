@@ -68,6 +68,7 @@ type SerializedProviderNotes = {
   kind: "provider-config";
   presetKey: string;
   debridio?: Partial<DebridioConfig>;
+  torboxApiKey?: string;
 };
 
 function encodeBase64(value: string) {
@@ -149,13 +150,15 @@ export function hydrateProviderDraft(provider: ProviderDraft): ProviderDraft {
   }
 
   if (provider.presetKey === "torbox") {
-    const torboxConfig = provider.config?.torbox;
-    const hasKey = Boolean(torboxConfig?.apiKey?.trim());
+    const parsed = decodeProviderNotes(provider.notes);
+    const apiKey = parsed?.presetKey === "torbox" ? parsed.torboxApiKey : "";
+    const hasKey = Boolean(apiKey?.trim());
     return {
       ...provider,
       manifestUrl: hasKey
-        ? buildTorboxManifestUrl(torboxConfig!.apiKey)
+        ? buildTorboxManifestUrl(apiKey!)
         : provider.manifestUrl.trim() || `${TORBOX_BASE_URL}/<api-key>/manifest.json`,
+      config: apiKey ? { torbox: { apiKey, disableUncached: false, maxSize: "", maxReturnPerQuality: "" } } : provider.config,
     };
   }
 
@@ -205,6 +208,11 @@ export function normalizeProviderDraftForSave(provider: ProviderDraft) {
     const hasKey = Boolean(torboxConfig?.apiKey?.trim());
     if (hasKey && torboxConfig) {
       manifestUrl = buildTorboxManifestUrl(torboxConfig.apiKey);
+      notes = JSON.stringify({
+        kind: "provider-config",
+        presetKey: "torbox",
+        torboxApiKey: torboxConfig.apiKey.trim(),
+      } satisfies SerializedProviderNotes);
     } else if (!manifestUrl || manifestUrl.includes("<api-key>")) {
       return {
         error: "TorBox needs your API key to generate the manifest URL.",
