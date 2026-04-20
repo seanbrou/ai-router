@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { createProviderDraft, DEFAULT_PREFERENCES } from "@/lib/profile-defaults";
@@ -143,6 +143,104 @@ export function ConfigureClient() {
   const [origin, setOrigin] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
 
+  /* ── Draft persistence (localStorage) ──────────────────────────────── */
+  const DRAFT_KEY = "ai-sorter-draft";
+
+  const buildDraft = useCallback(() => ({
+    profileName,
+    profilePreset,
+    geminiApiKey,
+    geminiModel,
+    customGeminiModel,
+    qualities,
+    languages,
+    codecs,
+    maxSizeGb,
+    preferDebrid,
+    preferCached,
+    strictness,
+    customPrompt,
+    providers,
+  }), [
+    profileName,
+    profilePreset,
+    geminiApiKey,
+    geminiModel,
+    customGeminiModel,
+    qualities,
+    languages,
+    codecs,
+    maxSizeGb,
+    preferDebrid,
+    preferCached,
+    strictness,
+    customPrompt,
+    providers,
+  ]);
+
+  // Save draft whenever form state changes (debounced slightly by React batching)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(DRAFT_KEY, JSON.stringify(buildDraft()));
+    } catch {
+      // ignore quota errors
+    }
+  }, [
+    profileName,
+    profilePreset,
+    geminiApiKey,
+    geminiModel,
+    customGeminiModel,
+    qualities,
+    languages,
+    codecs,
+    maxSizeGb,
+    preferDebrid,
+    preferCached,
+    strictness,
+    customPrompt,
+    providers,
+    buildDraft,
+  ]);
+
+  function restoreDraftFromStorage() {
+    if (typeof window === "undefined") return false;
+    try {
+      const raw = window.localStorage.getItem(DRAFT_KEY);
+      if (!raw) return false;
+      const draft = JSON.parse(raw);
+      if (draft.profileName) setProfileName(draft.profileName);
+      if (draft.profilePreset) setProfilePreset(draft.profilePreset);
+      if (draft.geminiApiKey !== undefined) setGeminiApiKey(draft.geminiApiKey);
+      if (draft.geminiModel) setGeminiModel(draft.geminiModel);
+      if (draft.customGeminiModel !== undefined) setCustomGeminiModel(draft.customGeminiModel);
+      if (Array.isArray(draft.qualities)) setQualities(draft.qualities);
+      if (Array.isArray(draft.languages)) setLanguages(draft.languages);
+      if (Array.isArray(draft.codecs)) setCodecs(draft.codecs);
+      if (draft.maxSizeGb !== undefined) setMaxSizeGb(draft.maxSizeGb);
+      if (draft.preferDebrid !== undefined) setPreferDebrid(draft.preferDebrid);
+      if (draft.preferCached !== undefined) setPreferCached(draft.preferCached);
+      if (draft.strictness) setStrictness(draft.strictness);
+      if (draft.customPrompt !== undefined) setCustomPrompt(draft.customPrompt);
+      if (Array.isArray(draft.providers) && draft.providers.length > 0) {
+        setProviders(draft.providers.map((p: ProviderDraft) => ({ ...p, config: p.config ?? undefined })));
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function clearDraft() {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.removeItem(DRAFT_KEY);
+    } catch {
+      // ignore
+    }
+  }
+
   /* ── Bootstrap ─────────────────────────────────────────────────────── */
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -154,6 +252,13 @@ export function ConfigureClient() {
     if (tokenFromUrl) window.history.replaceState({}, "", "/configure");
     if (initialToken) {
       setManageToken(initialToken);
+      return;
+    }
+
+    // No server profile — try restoring local draft before creating blank one
+    const hadDraft = restoreDraftFromStorage();
+    if (hadDraft) {
+      setStatus("Restored your last settings from this browser.");
       return;
     }
 
@@ -283,6 +388,7 @@ export function ConfigureClient() {
       });
       setInstallToken(response.installToken);
       setStatus("Profile saved");
+      clearDraft();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Failed to save.");
     }
