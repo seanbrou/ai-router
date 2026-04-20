@@ -119,28 +119,51 @@ function getProviderPresets() {
 }
 
 async function getInstallTokenByProfileId(ctx: { db: any }, profileId: string) {
-  const token = await ctx.db
-    .query("profileInstallTokens")
-    .withIndex("by_profileId_and_isActive", (q: any) =>
-      q.eq("profileId", profileId).eq("isActive", true),
-    )
-    .unique();
-
-  return token ?? null;
+  try {
+    const token = await ctx.db
+      .query("profileInstallTokens")
+      .withIndex("by_profileId_and_isActive", (q: any) =>
+        q.eq("profileId", profileId).eq("isActive", true),
+      )
+      .unique();
+    return token ?? null;
+  } catch {
+    // Fallback if composite index is missing or broken
+    const all = await ctx.db
+      .query("profileInstallTokens")
+      .filter((q: any) => q.eq(q.field("profileId"), profileId))
+      .collect();
+    return all.find((t: any) => t.isActive) ?? all[0] ?? null;
+  }
 }
 
 async function getProvidersByProfileId(ctx: { db: any }, profileId: string) {
-  return await ctx.db
-    .query("streamProviders")
-    .withIndex("by_profileId_and_sortOrder", (q: any) => q.eq("profileId", profileId))
-    .collect();
+  try {
+    return await ctx.db
+      .query("streamProviders")
+      .withIndex("by_profileId_and_sortOrder", (q: any) => q.eq("profileId", profileId))
+      .collect();
+  } catch {
+    return await ctx.db
+      .query("streamProviders")
+      .filter((q: any) => q.eq(q.field("profileId"), profileId))
+      .collect();
+  }
 }
 
 async function getSecretByProfileId(ctx: { db: any }, profileId: string) {
-  return await ctx.db
-    .query("profileSecrets")
-    .withIndex("by_profileId", (q: any) => q.eq("profileId", profileId))
-    .unique();
+  try {
+    return await ctx.db
+      .query("profileSecrets")
+      .withIndex("by_profileId", (q: any) => q.eq("profileId", profileId))
+      .unique();
+  } catch {
+    const all = await ctx.db
+      .query("profileSecrets")
+      .filter((q: any) => q.eq(q.field("profileId"), profileId))
+      .collect();
+    return all[0] ?? null;
+  }
 }
 
 export const listProviderPresets = query({
@@ -245,89 +268,103 @@ export const saveProfile = mutation({
     installToken: v.string(),
   }),
   handler: async (ctx, args) => {
-    const profile = await ctx.db
-      .query("streamProfiles")
-      .withIndex("by_manageToken", (q: any) => q.eq("manageToken", args.manageToken))
-      .unique();
-
-    if (!profile) {
-      throw new ConvexError({
-        code: "NOT_FOUND",
-        message: "Profile not found.",
-      });
-    }
-
-    const timestamp = now();
-
     try {
+      const profile = await ctx.db
+        .query("streamProfiles")
+        .withIndex("by_manageToken", (q: any) => q.eq("manageToken", args.manageToken))
+        .unique();
+
+      if (!profile) {
+        throw new ConvexError({
+          code: "NOT_FOUND",
+          message: "Profile not found.",
+        });
+      }
+
+      const timestamp = now();
+
       await ctx.db.patch(profile._id, {
         name: args.name.trim() || "My AI Sorter Profile",
         preferences: args.preferences,
         updatedAt: timestamp,
       });
-    } catch (e: any) {
-      throw new ConvexError({ code: "PATCH_PROFILE", message: `Failed to patch profile: ${e?.message ?? String(e)}` });
-    }
 
-    const existingProviders = await getProvidersByProfileId(ctx, profile._id);
-    await Promise.all(existingProviders.map((provider: any) => ctx.db.delete(provider._id)));
+      const existingProviders = await getProvidersByProfileId(ctx, profile._id);
+      for (const provider of existingProviders) {
+        try {
+          await ctx.db.delete(provider._id);
+        } catch {
+          // Ignore deletion errors (already deleted or invalid ID)
+        }
+      }
 
-    for (const provider of args.providers) {
+      for (const provider of args.providers) {
+        try {
+          await ctx.db.insert("streamProviders", {
+            profileId: profile._id,
+            presetKey: provider.presetKey,
+            label: provider.label,
+            manifestUrl: provider.manifestUrl,
+            notes: provider.notes ?? null,
+            enabled: provider.enabled,
+            sortOrder: provider.sortOrder,
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          });
+        } catch (e: any) {
+          throw new ConvexError({
+            code: "INSERT_PROVIDER",
+            message: `Failed to insert provider ${provider.label} (${provider.presetKey}): ${e?.message ?? String(e)}. URL: ${provider.manifestUrl}`,
+          });
+        }
+      }
+
+      const secret = await getSecretByProfileId(ctx, profile._id);
       try {
-        await ctx.db.insert("streamProviders", {
-          profileId: profile._id,
-          presetKey: provider.presetKey,
-          label: provider.label,
-          manifestUrl: provider.manifestUrl,
-          notes: provider.notes,
-          enabled: provider.enabled,
-          sortOrder: provider.sortOrder,
-          createdAt: timestamp,
-          updatedAt: timestamp,
-        });
+        if (secret) {
+          await ctx.db.patch(secret._id, {
+            geminiApiKey: args.geminiApiKey,
+            geminiModel: args.geminiModel.trim() || "gemini-3-flash-preview",
+            updatedAt: timestamp,
+          });
+        } else {
+          await ctx.db.insert("profileSecrets", {
+            profileId: profile._id,
+            geminiApiKey: args.geminiApiKey,
+            geminiModel: args.geminiModel.trim() || "gemini-3-flash-preview",
+            createdAt: timestamp,
+            updatedAt: timestamp,
+          });
+        }
       } catch (e: any) {
-        throw new ConvexError({
-          code: "INSERT_PROVIDER",
-          message: `Failed to insert provider ${provider.label} (${provider.presetKey}): ${e?.message ?? String(e)}. URL: ${provider.manifestUrl}`,
-        });
+        throw new ConvexError({ code: "SAVE_SECRET", message: `Failed to save secret: ${e?.message ?? String(e)}` });
       }
-    }
 
-    const secret = await getSecretByProfileId(ctx, profile._id);
-    try {
-      if (secret) {
-        await ctx.db.patch(secret._id, {
-          geminiApiKey: args.geminiApiKey,
-          geminiModel: args.geminiModel.trim() || "gemini-3-flash-preview",
-          updatedAt: timestamp,
-        });
-      } else {
-        await ctx.db.insert("profileSecrets", {
+      let installToken = await getInstallTokenByProfileId(ctx, profile._id);
+      if (!installToken) {
+        const token = makeToken("install");
+        const installTokenId = await ctx.db.insert("profileInstallTokens", {
           profileId: profile._id,
-          geminiApiKey: args.geminiApiKey,
-          geminiModel: args.geminiModel.trim() || "gemini-3-flash-preview",
+          token,
+          isActive: true,
           createdAt: timestamp,
           updatedAt: timestamp,
         });
+        installToken = await ctx.db.get(installTokenId);
       }
+
+      return { installToken: installToken?.token ?? "" };
     } catch (e: any) {
-      throw new ConvexError({ code: "SAVE_SECRET", message: `Failed to save secret: ${e?.message ?? String(e)}` });
-    }
-
-    let installToken = await getInstallTokenByProfileId(ctx, profile._id);
-    if (!installToken) {
-      const token = makeToken("install");
-      const installTokenId = await ctx.db.insert("profileInstallTokens", {
-        profileId: profile._id,
-        token,
-        isActive: true,
-        createdAt: timestamp,
-        updatedAt: timestamp,
+      // If it's already a ConvexError, rethrow it
+      if (e instanceof ConvexError) {
+        throw e;
+      }
+      // Otherwise wrap the raw error so the client sees something useful
+      throw new ConvexError({
+        code: "UNEXPECTED_ERROR",
+        message: `Unexpected server error: ${e?.message ?? String(e)}`,
       });
-      installToken = await ctx.db.get(installTokenId);
     }
-
-    return { installToken: installToken?.token ?? "" };
   },
 });
 
