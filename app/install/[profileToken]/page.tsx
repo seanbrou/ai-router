@@ -19,24 +19,21 @@ export default async function InstallPage({ params }: InstallPageProps) {
 
   return (
     <main className="shell">
-      <section className="hero">
+      <section className="hero compact">
         <div className="eyebrow">Install</div>
         <h1>Install your AI Sorter add-on</h1>
         <p>
-          Use the manifest URL below in Stremio, or open the deep link on devices that support it.
+          Choose the easiest method below. The manifest URL is all Stremio needs to load your
+          personalized streams.
         </p>
       </section>
 
-      <section className="panel" style={{ marginTop: 24 }}>
+      <section className="panel installPanel" style={{ marginTop: 24 }}>
         <InstallActions
           manifestUrl={manifestUrl}
           stremioDeepLink={stremioDeepLink}
           stremioWebUrl={stremioWebUrl}
         />
-        <h2>Manifest URL</h2>
-        <p className="code">{manifestUrl}</p>
-        <h2 style={{ marginTop: 24 }}>Deep Link</h2>
-        <p className="code">{stremioDeepLink}</p>
       </section>
     </main>
   );

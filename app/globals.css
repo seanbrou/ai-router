@@ -547,3 +547,94 @@ body {
     text-align: center;
   }
 }
+
+/* ── Install page ───────────────────────────────────────────────── */
+.installGrid {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 28px;
+  align-items: start;
+}
+
+.qrWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.qrImg {
+  width: 220px;
+  height: 220px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: #fff;
+  padding: 8px;
+}
+
+.qrLabel {
+  font-size: 12px;
+  color: var(--text-tertiary);
+  text-align: center;
+}
+
+.actionsWrap h3 {
+  font-size: 13px;
+  font-weight: 510;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 14px;
+}
+
+.ctaCol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ctaCol .button {
+  width: 100%;
+  justify-content: center;
+}
+
+.manifestBox h3 {
+  font-size: 13px;
+  font-weight: 510;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 10px;
+}
+
+.codeBlock {
+  display: block;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+.hero.compact {
+  padding: 16px 0 20px;
+}
+
+@media (max-width: 720px) {
+  .installGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .qrWrap {
+    order: 2;
+  }
+
+  .qrImg {
+    width: 180px;
+    height: 180px;
+  }
+}

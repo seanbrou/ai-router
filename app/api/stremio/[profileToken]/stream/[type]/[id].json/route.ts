@@ -6,6 +6,12 @@ import { fetchProviderStreams } from "@/lib/provider-fetch";
 import { finalizeRanking, normalizeStreamCandidate, rerankWithGemini } from "@/lib/stream-ranking";
 import { ProviderDraft } from "@/lib/types";
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+};
+
 type RouteProps = {
   params: Promise<{
     profileToken: string;
@@ -14,8 +20,16 @@ type RouteProps = {
   }>;
 };
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: CORS_HEADERS,
+  });
+}
+
 export async function GET(_: Request, { params }: RouteProps) {
   const { profileToken, type, id } = await params;
+
   try {
     const convex = getConvexServerClient();
     const profile = await convex.query(api.profiles.getInstallProfile, {
@@ -23,13 +37,17 @@ export async function GET(_: Request, { params }: RouteProps) {
     });
 
     if (!profile) {
-      return NextResponse.json({ streams: [] }, { status: 404 });
+      return NextResponse.json({ streams: [] }, { status: 200, headers: CORS_HEADERS });
     }
 
     const metadata = await enrichMediaMetadata(type, id);
     const enabledProviders = profile.providers.filter(
       (provider: ProviderDraft) => provider.enabled && provider.manifestUrl.trim().length > 0,
     );
+
+    if (enabledProviders.length === 0) {
+      return NextResponse.json({ streams: [] }, { status: 200, headers: CORS_HEADERS });
+    }
 
     const providerResponses = await Promise.allSettled(
       enabledProviders.map(async (provider: ProviderDraft, providerIndex: number) => ({
@@ -84,26 +102,25 @@ export async function GET(_: Request, { params }: RouteProps) {
       streamCount: ranked.length,
     });
 
-    return NextResponse.json({
-      streams: ranked.map((candidate) => ({
-        ...candidate.originalStream,
-        name: `${candidate.providerLabel} · ${candidate.quality ?? "Auto"}`,
-        title: candidate.title,
-        description: candidate.reason,
-      })),
+    const streams = ranked.map((candidate) => {
+      // Preserve all original stream fields and only override display labels
+      const stream = candidate.originalStream;
+      const qualityLabel = candidate.quality ?? "Auto";
+      const name = `${candidate.providerLabel} · ${qualityLabel}`;
+      const title = candidate.reason || candidate.title || candidate.providerLabel;
+
+      return {
+        ...stream,
+        name,
+        title,
+      };
     });
+
+    return NextResponse.json({ streams }, { status: 200, headers: CORS_HEADERS });
   } catch {
     return NextResponse.json(
-      {
-        streams: [
-          {
-            name: "AI Sorter backend unavailable",
-            title: "Convex backend is not reachable",
-            description: "Start Convex locally or configure a live deployment before requesting streams.",
-          },
-        ],
-      },
-      { status: 503 },
+      { streams: [] },
+      { status: 200, headers: CORS_HEADERS },
     );
   }
 }

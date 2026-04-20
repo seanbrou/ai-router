@@ -773,9 +773,40 @@ export function ConfigureClient() {
         </div>
       </section>
 
-      {/* ── Install ──────────────────────────────────────────────── */}
+      {/* ── Install ───────────────────────────────────────────────── */}
       <section className="panel installPanel" style={{ marginTop: 20 }}>
-        <h2>Install</h2>
+        <h2>Install in Stremio</h2>
+
+        {manifestUrl && (
+          <div className="installGrid" style={{ marginBottom: 20 }}>
+            <div className="qrWrap">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(manifestUrl)}`}
+                alt="QR code for manifest URL"
+                className="qrImg"
+              />
+              <p className="qrLabel">Scan on mobile / TV</p>
+            </div>
+            <div className="actionsWrap">
+              <h3>One-click install</h3>
+              <div className="ctaCol">
+                <button className="button primary" type="button" onClick={() => {
+                  window.open(`https://web.strem.io/#/addons?addon=${encodeURIComponent(manifestUrl)}`, "_blank", "noopener,noreferrer");
+                  copyUrl(manifestUrl, "manifest");
+                  setStatus("Opened Stremio Web — manifest URL copied.");
+                }}>
+                  Add to Stremio Web
+                </button>
+                <button className="button primary" type="button" onClick={openStremioApp}>
+                  Open in Stremio App
+                </button>
+                <button className="button ghost" type="button" onClick={() => copyUrl(manifestUrl, "manifest")}>
+                  {copied === "manifest" ? "Manifest Copied ✓" : "Copy Manifest URL"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {manageUrl && (
           <CopyRow label="Manage URL" url={manageUrl} onCopy={() => copyUrl(manageUrl, "manage")} copied={copied === "manage"} />
@@ -787,13 +818,7 @@ export function ConfigureClient() {
           <CopyRow label="Manifest URL" url={manifestUrl} onCopy={() => copyUrl(manifestUrl, "manifest")} copied={copied === "manifest"} />
         )}
 
-        <div className="ctaRow">
-          <button className="button ghost" type="button" disabled={!manifestUrl} onClick={openStremioWeb}>
-            Open in Stremio Web
-          </button>
-          <button className="button ghost" type="button" disabled={!manifestUrl} onClick={openStremioApp}>
-            Open in Stremio App
-          </button>
+        <div className="ctaRow" style={{ marginTop: 20 }}>
           <button className="button primary" type="button" disabled={bootstrapping} onClick={handleSave}>
             Save profile
           </button>

@@ -19,32 +19,56 @@ export function InstallActions(props: InstallActionsProps) {
   }
 
   function openStremioWeb() {
-    window.open(stremioWebUrl, "_blank", "noopener,noreferrer");
+    const url = `${stremioWebUrl}?addon=${encodeURIComponent(manifestUrl)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
     void copyValue(manifestUrl, "manifest");
   }
 
+  function openStremioApp() {
+    window.open(stremioDeepLink, "_self");
+  }
+
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(manifestUrl)}`;
+
   return (
     <>
-      <h2>Install Options</h2>
-      <div className="ctaRow" style={{ marginTop: 16 }}>
-        <a className="button primary" href={stremioDeepLink}>
-          Open in Stremio App
-        </a>
-        <button className="button ghost" type="button" onClick={openStremioWeb}>
-          Open Stremio Web + Copy Manifest
-        </button>
-        <button className="button ghost" type="button" onClick={() => void copyValue(manifestUrl, "manifest")}>
-          {copied === "manifest" ? "Manifest Copied" : "Copy Manifest URL"}
-        </button>
+      <div className="installGrid">
+        <div className="qrWrap">
+          <img src={qrUrl} alt="QR code for manifest URL" className="qrImg" />
+          <p className="qrLabel">Scan to install on mobile / TV</p>
+        </div>
+
+        <div className="actionsWrap">
+          <h3>One-click install</h3>
+          <div className="ctaCol">
+            <button className="button primary" type="button" onClick={openStremioWeb}>
+              Add to Stremio Web
+            </button>
+            <button className="button primary" type="button" onClick={openStremioApp}>
+              Open in Stremio App
+            </button>
+            <button
+              className="button ghost"
+              type="button"
+              onClick={() => void copyValue(manifestUrl, "manifest")}
+            >
+              {copied === "manifest" ? "Manifest Copied ✓" : "Copy Manifest URL"}
+            </button>
+            <button
+              className="button ghost"
+              type="button"
+              onClick={() => void copyValue(stremioDeepLink, "deeplink")}
+            >
+              {copied === "deeplink" ? "Deep Link Copied ✓" : "Copy Deep Link"}
+            </button>
+          </div>
+        </div>
       </div>
-      <div className="ctaRow" style={{ marginTop: 12 }}>
-        <button className="button ghost" type="button" onClick={() => void copyValue(stremioDeepLink, "deeplink")}>
-          {copied === "deeplink" ? "Deep Link Copied" : "Copy Stremio Deep Link"}
-        </button>
+
+      <div className="manifestBox" style={{ marginTop: 20 }}>
+        <h3>Manifest URL</h3>
+        <code className="codeBlock">{manifestUrl}</code>
       </div>
-      <p style={{ marginTop: 16 }}>
-        If you use Stremio Web, open the add-ons page there and paste the manifest URL below.
-      </p>
     </>
   );
 }
