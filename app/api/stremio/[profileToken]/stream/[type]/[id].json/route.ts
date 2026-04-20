@@ -105,9 +105,27 @@ export async function GET(_: Request, { params }: RouteProps) {
     const streams = ranked.map((candidate) => {
       // Preserve all original stream fields and only override display labels
       const stream = candidate.originalStream;
-      const qualityLabel = candidate.quality ?? "Auto";
-      const name = `${candidate.providerLabel} · ${qualityLabel}`;
-      const title = candidate.reason || candidate.title || candidate.providerLabel;
+
+      // Build Stremio display name (bold primary line)
+      const displayParts: string[] = [];
+      if (candidate.quality) displayParts.push(candidate.quality);
+      if (candidate.source) displayParts.push(candidate.source);
+      if (candidate.codec) displayParts.push(candidate.codec);
+      if (candidate.hdr) displayParts.push(candidate.hdr);
+      if (candidate.languages.length > 0) displayParts.push(candidate.languages.join("/"));
+      if (displayParts.length === 0) displayParts.push("Stream");
+
+      const name = displayParts.join(" · ");
+
+      // Build subtitle line with provider, size, seeders, cached/debrid badges
+      const subtitleParts: string[] = [candidate.providerLabel];
+      if (candidate.sizeGb) subtitleParts.push(`${candidate.sizeGb.toFixed(1)} GB`);
+      if (candidate.seeders && candidate.seeders > 0) subtitleParts.push(`↑ ${candidate.seeders}`);
+      if (candidate.isCached) subtitleParts.push("⚡ cached");
+      if (candidate.isDebrid) subtitleParts.push("🔗 debrid");
+      if (candidate.reason) subtitleParts.push(candidate.reason);
+
+      const title = subtitleParts.join(" · ");
 
       return {
         ...stream,

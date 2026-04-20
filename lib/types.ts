@@ -61,6 +61,7 @@ export type StreamCandidate = {
   title: string;
   description: string;
   quality: string | null;
+  source: string | null;
   codec: string | null;
   hdr: string | null;
   languages: string[];
