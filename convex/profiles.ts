@@ -206,7 +206,7 @@ export const createAnonymousProfile = mutation({
     await ctx.db.insert("profileSecrets", {
       profileId,
       geminiApiKey: null,
-      geminiModel: "gemini-3-flash-preview",
+      geminiModel: "gemini-3.1-flash-lite-preview",
       createdAt: timestamp,
       updatedAt: timestamp,
     });
@@ -249,7 +249,7 @@ export const getEditorProfile = query({
       })),
       gemini: {
         hasApiKey: Boolean(secret?.geminiApiKey),
-        model: secret?.geminiModel ?? "gemini-3-flash-preview",
+        model: secret?.geminiModel ?? "gemini-3.1-flash-lite-preview",
       },
     };
   },
@@ -324,14 +324,14 @@ export const saveProfile = mutation({
         if (secret) {
           await ctx.db.patch(secret._id, {
             geminiApiKey: args.geminiApiKey,
-            geminiModel: args.geminiModel.trim() || "gemini-3-flash-preview",
+            geminiModel: args.geminiModel.trim() || "gemini-3.1-flash-lite-preview",
             updatedAt: timestamp,
           });
         } else {
           await ctx.db.insert("profileSecrets", {
             profileId: profile._id,
             geminiApiKey: args.geminiApiKey,
-            geminiModel: args.geminiModel.trim() || "gemini-3-flash-preview",
+            geminiModel: args.geminiModel.trim() || "gemini-3.1-flash-lite-preview",
             createdAt: timestamp,
             updatedAt: timestamp,
           });
@@ -457,7 +457,7 @@ export const getInstallProfile = query({
       })),
       gemini: {
         apiKey: secret?.geminiApiKey ?? null,
-        model: secret?.geminiModel ?? "gemini-3-flash-preview",
+        model: secret?.geminiModel ?? "gemini-3.1-flash-lite-preview",
       },
     };
   },

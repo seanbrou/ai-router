@@ -389,6 +389,7 @@ type GeminiRanking = {
   candidateId: string;
   score: number;
   reason: string;
+  flags?: string[];
 };
 
 function extractText(response: unknown): string {
@@ -413,6 +414,8 @@ function parseJsonResponse(text: string): { rankings?: GeminiRanking[] } {
   }
 }
 
+const LLM_MAX_CANDIDATES = 30;
+
 export async function rerankWithGemini(args: {
   candidates: StreamCandidate[];
   profile: InstallProfile;
@@ -423,39 +426,105 @@ export async function rerankWithGemini(args: {
     return candidates;
   }
 
-  const prompt = [
-    "You are ranking Stremio stream candidates for a user. Return ONLY JSON in this exact format:",
-    '{"rankings":[{"candidateId":"...","score":0-100,"reason":"brief reason"}]}',
-    "",
-    "SCORING CRITERIA (highest priority first):",
-    "1. Quality: prefer the user's preferred resolution (e.g., 1080p, 2160p).",
-    "2. Language: strongly prefer streams containing the user's preferred language. Multi-audio/dual-audio streams that include the preferred language are excellent. Streams with only foreign languages are bad.",
-    "3. Provider order: the user ordered providers by priority. Respect that order.",
-    "4. Source: BluRay REMUX > BluRay > WEB-DL > WEBRip > HDTV > DVDRip > CAM.",
-    "5. Codec: HEVC/AV1 are preferred over AVC for quality; AVC is preferred for compatibility.",
-    "6. HDR: Dolby Vision and HDR10+ are premium bonuses.",
-    "7. Debrid/Cached: debrid-backed and cached streams are more reliable.",
-    "8. Size: reasonable size for the quality (not absurdly small or huge).",
-    "9. Seeders: more seeders = better for torrents.",
+  // Sort by deterministic score descending so we send the best candidates to the LLM
+  const sorted = [...candidates].sort((a, b) => b.deterministicScore - a.deterministicScore);
+
+  // Take top N candidates. Always include a few low-ranked ones so the LLM sees contrast.
+  const topN = Math.min(sorted.length, Math.max(LLM_MAX_CANDIDATES - 3, sorted.length));
+  const topCandidates = sorted.slice(0, topN);
+  const bottomCandidates = sorted.length > topN ? sorted.slice(-3) : [];
+  const candidatesToSend = [...topCandidates, ...bottomCandidates];
+  const sentIds = new Set(candidatesToSend.map((c) => c.candidateId));
+
+  const strictnessLine =
     profile.preferences.strictness === "quality-first"
-      ? "MODE: Quality-first. Favor the highest quality even if file size is larger."
+      ? "MODE: Quality-first. Favor the highest quality even if file size is larger. Prioritize BluRay REMUX/BluRay and premium codecs."
       : profile.preferences.strictness === "speed-first"
-        ? "MODE: Speed-first. Favor smaller, cached, instant-starting streams."
-        : "MODE: Balanced. Balance quality, speed, and reliability.",
+        ? "MODE: Speed-first. Favor smaller, cached, instant-starting streams. Penalize huge files and torrents with few seeders."
+        : "MODE: Balanced. Balance quality, speed, and reliability.";
+
+  const prompt = [
+    "You are an expert Stremio stream evaluator. Your job is to judge whether each stream candidate is REAL, WORKING, and WORTH recommending.",
+    "",
+    "RETURN ONLY JSON in this exact format:",
+    '{"rankings":[{"candidateId":"...","score":0-100,"reason":"one-line reason","flags":[]}]}',
+    "",
+    "=== SCORING RULES (apply in this priority order) ===",
+    "",
+    "1. QUALITY (highest priority):",
+    "   - Score 90-100: Matches user's TOP preferred quality with correct source and reasonable size.",
+    "   - Score 70-89: Matches user's 2nd/3rd preferred quality.",
+    "   - Score 40-69: Lower quality but acceptable.",
+    "   - Score 0-39: Quality the user explicitly does NOT want.",
+    "   - FAKE QUALITY PENALTY: If a stream claims 1080p/2160p but is absurdly small (<0.8GB for 1080p, <3GB for 2160p movie), it is likely FAKE or mislabeled. Subtract 40-60 points.",
+    "   - If quality cannot be determined, be conservative.",
+    "",
+    "2. LANGUAGE (second priority):",
+    "   - Score boost +20 to +30 if stream includes the user's preferred language.",
+    "   - EXCELLENT: Multi-audio / dual-audio streams that include the user's language (user gets their lang + extras).",
+    "   - BAD: Stream is ONLY in languages the user did not request. Subtract 30-50 points.",
+    "   - WARNING: If filename suggests foreign audio (e.g., KORSUB, VOSTFR, GERMAN, RUSSIAN) but metadata claims user's language, flag as 'possible_lang_mismatch'.",
+    "",
+    "3. PROVIDER ORDER (third priority):",
+    "   - The user ordered providers by trust/priority. Provider #0 is their most trusted.",
+    "   - Give a small bonus (+5 to +15) to higher-priority providers.",
+    "   - But DO NOT let provider override a clearly broken stream from a lower provider.",
+    "",
+    "4. SOURCE TYPE:",
+    "   - Premium: BluRay REMUX, BluRay → best video quality.",
+    "   - Good: WEB-DL, WEBRip → decent quality.",
+    "   - Mediocre: HDTV, DVDRip → watchable but not great.",
+    "   - Bad: CAM, HDCAM, TeleSync, TeleCine, SCR, R5 → terrible quality, only use if nothing else exists.",
+    "   - MISLABEL PENALTY: If a CAM/TS is labeled as BluRay or WEB-DL, subtract 50-70 points and flag 'mislabeled_source'.",
+    "",
+    "5. CODEC:",
+    "   - HEVC/H.265 and AV1 are efficient and high quality.",
+    "   - AVC/H.264 is universally compatible.",
+    "   - VP9 is acceptable.",
+    "   - MPEG-2, DivX, XviD are outdated.",
+    "",
+    "6. HDR / Dolby Vision:",
+    "   - Small bonus (+5 to +10) for HDR10, HDR10+, Dolby Vision.",
+    "   - Only meaningful if the user has a display that supports it (assume yes).",
+    "",
+    "7. RELIABILITY / WORKING STATUS (critically important):",
+    "   - CACHED or DEBRID streams are almost always working → +15 to +25 bonus.",
+    "   - Torrents with 0 seeders are likely DEAD → subtract 40 points, flag 'likely_dead'.",
+    "   - Torrents with <5 seeders are risky → subtract 15-25 points.",
+    "   - Torrents with 50+ seeders are healthy → small bonus.",
+    "   - If size is missing AND it's a torrent with no seeders info, be skeptical.",
+    "",
+    "8. SIZE SANITY CHECKS:",
+    "   - 2160p movie should be >3 GB (ideally 8-25 GB). <2 GB is suspicious.",
+    "   - 1080p movie should be >1 GB (ideally 2-10 GB). <0.5 GB is suspicious.",
+    "   - 720p movie should be >0.6 GB. <0.3 GB is suspicious.",
+    "   - TV episodes can be roughly 1/3 to 1/2 of movie sizes.",
+    "   - If size is way too small for claimed quality, flag 'suspicious_size' and subtract 30-50.",
+    "   - If size is absurdly huge (>50 GB for 1080p), flag 'oversized' and subtract 10-20.",
+    "",
+    "9. NAMING RED FLAGS:",
+    "   - If title contains 'HC' (hardcoded subs) and user wants English → may be foreign with hard subs.",
+    "   - 'KORSUB', 'VOSTFR', 'GERDUB', 'RUSDUB' in title but user wants English → wrong language.",
+    "   - 'COMPLETE.BLURAY' without proper size → likely fake.",
+    "   - Random alphanumeric strings with no metadata → suspicious.",
+    "",
+    strictnessLine,
     profile.preferences.customPrompt
       ? `CUSTOM USER INSTRUCTIONS: ${profile.preferences.customPrompt}`
       : null,
     "",
+    "=== CONTEXT ===",
     `Media: ${mediaLabel}`,
-    `User preferred qualities: ${profile.preferences.preferredQualities.join(", ") || "any"}`,
+    `User preferred qualities (in order): ${profile.preferences.preferredQualities.join(", ") || "any"}`,
     `User preferred languages: ${profile.preferences.preferredLanguages.join(", ") || "any"}`,
-    `User preferred codecs: ${profile.preferences.preferredCodecs.join(", ") || "any"}`,
+    `User preferred codecs (in order): ${profile.preferences.preferredCodecs.join(", ") || "any"}`,
     `Prefer debrid: ${profile.preferences.preferDebrid}`,
     `Prefer cached: ${profile.preferences.preferCached}`,
+    `Max size limit: ${profile.preferences.maxSizeGb ? `${profile.preferences.maxSizeGb} GB` : "none"}`,
     "",
-    "Candidates:",
+    "=== CANDIDATES (pre-sorted by deterministic score) ===",
     JSON.stringify(
-      candidates.map((c) => ({
+      candidatesToSend.map((c) => ({
         candidateId: c.candidateId,
         provider: c.providerLabel,
         providerPriority: c.providerPriority,
@@ -469,9 +538,15 @@ export async function rerankWithGemini(args: {
         seeders: c.seeders,
         isCached: c.isCached,
         isDebrid: c.isDebrid,
-        baseScore: c.deterministicScore,
+        deterministicScore: Math.round(c.deterministicScore),
       })),
     ),
+    "",
+    "=== INSTRUCTIONS ===",
+    "Score each candidate 0-100 based on ACTUAL quality and likelihood of working.",
+    "Be harsh on fake, mislabeled, or dead streams.",
+    "Be generous on well-labeled, properly-sized, cached/debrid streams that match user preferences.",
+    "Return the rankings array. Every candidate in the list must have a ranking entry.",
   ]
     .filter((part): part is string => Boolean(part))
     .join("\n");
@@ -488,7 +563,7 @@ export async function rerankWithGemini(args: {
         body: JSON.stringify({
           generationConfig: {
             responseMimeType: "application/json",
-            temperature: 0.2,
+            temperature: 0.15,
           },
           contents: [
             {
@@ -501,6 +576,7 @@ export async function rerankWithGemini(args: {
     );
 
     if (!response.ok) {
+      console.warn("[ai-router] Gemini API error:", response.status, await response.text().catch(() => ""));
       return candidates;
     }
 
@@ -511,19 +587,46 @@ export async function rerankWithGemini(args: {
     );
 
     return candidates.map((candidate) => {
+      // If this candidate was not sent to LLM, keep deterministic score
+      if (!sentIds.has(candidate.candidateId)) {
+        return candidate;
+      }
+
       const ranking = rankings.get(candidate.candidateId);
       if (!ranking) return candidate;
 
-      // Scale LLM score 0-100 into a reasonable additive range (0-30)
-      const llmBoost = (ranking.score / 100) * 30;
+      const flags = ranking.flags ?? [];
+      const llmScore = Number.isFinite(ranking.score) ? Math.max(0, Math.min(100, ranking.score)) : 50;
+
+      // Combine scores: deterministic anchors, LLM can dominate
+      // LLM score 0-100 gets weighted more heavily than deterministic
+      const deterministicWeight = 0.35;
+      const llmWeight = 1.35;
+      let finalScore = candidate.deterministicScore * deterministicWeight + llmScore * llmWeight;
+
+      // Flag penalties
+      if (flags.includes("likely_dead") || flags.includes("mislabeled_source")) {
+        finalScore -= 60;
+      }
+      if (flags.includes("suspicious_size")) {
+        finalScore -= 45;
+      }
+      if (flags.includes("possible_lang_mismatch") || flags.includes("wrong_language")) {
+        finalScore -= 35;
+      }
+      if (flags.includes("oversized")) {
+        finalScore -= 15;
+      }
+
       return {
         ...candidate,
-        llmScore: ranking.score,
-        finalScore: candidate.deterministicScore + llmBoost,
+        llmScore,
+        finalScore,
         reason: ranking.reason,
       };
     });
-  } catch {
+  } catch (err) {
+    console.warn("[ai-router] Gemini rerank failed:", err);
     return candidates;
   }
 }

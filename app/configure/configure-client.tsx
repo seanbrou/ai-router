@@ -121,7 +121,7 @@ export function ConfigureClient() {
 
   // Gemini
   const [geminiApiKey, setGeminiApiKey] = useState("");
-  const [geminiModel, setGeminiModel] = useState("gemini-3-flash-preview");
+  const [geminiModel, setGeminiModel] = useState("gemini-3.1-flash-lite-preview");
   const [customGeminiModel, setCustomGeminiModel] = useState("");
 
   // Preferences
@@ -190,7 +190,7 @@ export function ConfigureClient() {
       setGeminiModel(editorProfile.gemini.model);
       setCustomGeminiModel("");
     } else {
-      setGeminiModel("gemini-3-flash-preview");
+      setGeminiModel("gemini-3.1-flash-lite-preview");
       setCustomGeminiModel(editorProfile.gemini.model);
     }
     setInstallToken(editorProfile.installToken);

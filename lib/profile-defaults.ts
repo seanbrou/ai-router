@@ -61,6 +61,7 @@ export const SIZE_OPTIONS = [
 ];
 
 export const GEMINI_MODEL_OPTIONS = [
+  { value: "gemini-3.1-flash-lite-preview", label: "Gemini 3.1 Flash Lite Preview" },
   { value: "gemini-3-flash-preview", label: "Gemini 3 Flash Preview" },
   { value: "gemini-3-pro-preview", label: "Gemini 3 Pro Preview" },
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
