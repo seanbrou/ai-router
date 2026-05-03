@@ -1,5 +1,6 @@
 import { ProviderDraft } from "./types";
 import { TORRENTIO_INSTANCES } from "./provider-presets";
+import { cacheKey, getCachedStreams, setCachedStreams } from "./stream-cache";
 
 type RawStream = Record<string, unknown>;
 
@@ -138,14 +139,35 @@ async function fetchTorrentioWithFallback(type: string, id: string) {
 }
 
 export async function fetchProviderStreams(provider: ProviderDraft, type: string, id: string) {
+  // Check cache first
+  const key = cacheKey(provider.presetKey, type, id);
+  const cached = getCachedStreams(key);
+  if (cached) {
+    return {
+      streamUrl: manifestUrlToStreamUrl(provider.manifestUrl, type, id),
+      streams: cached,
+      fromCache: true,
+    };
+  }
+
   // Torrentio: try multiple instances with automatic fallback
   if (provider.presetKey === "torrentio") {
-    return fetchTorrentioWithFallback(type, id);
+    const result = await fetchTorrentioWithFallback(type, id);
+    if (result.streams.length > 0) {
+      setCachedStreams(key, result.streams);
+    }
+    return result;
   }
 
   const url = manifestUrlToStreamUrl(provider.manifestUrl, type, id);
   const json = await fetchJsonWithTimeout(url, 8000);
   const streams = Array.isArray(json?.streams) ? (json.streams as RawStream[]) : [];
+
+  // Cache successful responses
+  if (streams.length > 0) {
+    setCachedStreams(key, streams);
+  }
+
   return {
     streamUrl: url,
     streams,

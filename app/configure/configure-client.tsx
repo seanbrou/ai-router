@@ -28,7 +28,10 @@ import {
   GEMINI_MODEL_OPTIONS,
   PROFILE_NAME_OPTIONS,
   PROVIDER_PRESET_OPTIONS,
+  LLM_PROVIDER_OPTIONS,
+  OPENCODE_MODEL_OPTIONS,
 } from "@/lib/profile-defaults";
+import { OPENCODE_GO_BASE_URL, OPENCODE_GO_DEFAULT_MODEL } from "@/lib/llm-ranking";
 
 type ProviderPreset = {
   key: string;
@@ -119,10 +122,13 @@ export function ConfigureClient() {
   const [profilePreset, setProfilePreset] = useState("custom");
   const [profileName, setProfileName] = useState("My AI Sorter Profile");
 
-  // Gemini
+  // LLM
+  const [llmProvider, setLlmProvider] = useState<string>("none");
   const [geminiApiKey, setGeminiApiKey] = useState("");
   const [geminiModel, setGeminiModel] = useState("gemini-3.1-flash-lite-preview");
   const [customGeminiModel, setCustomGeminiModel] = useState("");
+  const [openCodeModel, setOpenCodeModel] = useState(OPENCODE_GO_DEFAULT_MODEL);
+  const [llmBaseUrl, setLlmBaseUrl] = useState("");
 
   // Preferences
   const [qualities, setQualities] = useState<string[]>(DEFAULT_PREFERENCES.preferredQualities);
@@ -149,9 +155,12 @@ export function ConfigureClient() {
   const buildDraft = useCallback(() => ({
     profileName,
     profilePreset,
+    llmProvider,
     geminiApiKey,
     geminiModel,
     customGeminiModel,
+    openCodeModel,
+    llmBaseUrl,
     qualities,
     languages,
     codecs,
@@ -164,9 +173,12 @@ export function ConfigureClient() {
   }), [
     profileName,
     profilePreset,
+    llmProvider,
     geminiApiKey,
     geminiModel,
     customGeminiModel,
+    openCodeModel,
+    llmBaseUrl,
     qualities,
     languages,
     codecs,
@@ -189,9 +201,12 @@ export function ConfigureClient() {
   }, [
     profileName,
     profilePreset,
+    llmProvider,
     geminiApiKey,
     geminiModel,
     customGeminiModel,
+    openCodeModel,
+    llmBaseUrl,
     qualities,
     languages,
     codecs,
@@ -212,9 +227,12 @@ export function ConfigureClient() {
       const draft = JSON.parse(raw);
       if (draft.profileName) setProfileName(draft.profileName);
       if (draft.profilePreset) setProfilePreset(draft.profilePreset);
+      if (draft.llmProvider !== undefined) setLlmProvider(draft.llmProvider);
       if (draft.geminiApiKey !== undefined) setGeminiApiKey(draft.geminiApiKey);
       if (draft.geminiModel) setGeminiModel(draft.geminiModel);
       if (draft.customGeminiModel !== undefined) setCustomGeminiModel(draft.customGeminiModel);
+      if (draft.openCodeModel) setOpenCodeModel(draft.openCodeModel);
+      if (draft.llmBaseUrl !== undefined) setLlmBaseUrl(draft.llmBaseUrl);
       if (Array.isArray(draft.qualities)) setQualities(draft.qualities);
       if (Array.isArray(draft.languages)) setLanguages(draft.languages);
       if (Array.isArray(draft.codecs)) setCodecs(draft.codecs);
@@ -291,12 +309,21 @@ export function ConfigureClient() {
     setPreferCached(editorProfile.preferences.preferCached);
     setStrictness(editorProfile.preferences.strictness);
     setCustomPrompt(editorProfile.preferences.customPrompt ?? "");
-    if (GEMINI_MODEL_OPTIONS.some((option) => option.value === editorProfile.gemini.model)) {
-      setGeminiModel(editorProfile.gemini.model);
-      setCustomGeminiModel("");
-    } else {
-      setGeminiModel("gemini-3.1-flash-lite-preview");
-      setCustomGeminiModel(editorProfile.gemini.model);
+    if (editorProfile.llm) {
+      setLlmProvider(editorProfile.llm.provider ?? "none");
+      setGeminiApiKey(editorProfile.llm.apiKey ?? "");
+      if (editorProfile.llm.provider === "opencode-go" || editorProfile.llm.provider === "openai-compatible") {
+        setOpenCodeModel(editorProfile.llm.model || OPENCODE_GO_DEFAULT_MODEL);
+        setLlmBaseUrl(editorProfile.llm.baseUrl ?? "");
+      } else {
+        if (GEMINI_MODEL_OPTIONS.some((option) => option.value === editorProfile.llm.model)) {
+          setGeminiModel(editorProfile.llm.model);
+          setCustomGeminiModel("");
+        } else {
+          setGeminiModel("gemini-3.1-flash-lite-preview");
+          setCustomGeminiModel(editorProfile.llm.model);
+        }
+      }
     }
     setInstallToken(editorProfile.installToken);
   }, [editorProfile]);
@@ -385,6 +412,8 @@ export function ConfigureClient() {
         })),
         geminiApiKey: geminiApiKey.trim() || null,
         geminiModel: customGeminiModel.trim() || geminiModel,
+        llmProvider: llmProvider,
+        llmBaseUrl: llmProvider === "openai-compatible" ? (llmBaseUrl.trim() || null) : null,
       });
       setInstallToken(response.installToken);
       setStatus("Profile saved");
@@ -531,7 +560,7 @@ export function ConfigureClient() {
             <span className="logoMark">◆</span>
             AI Sorter
           </span>
-          <span className="version">v1.0</span>
+          <span className="version">v2.0</span>
         </div>
       </header>
 
@@ -564,33 +593,86 @@ export function ConfigureClient() {
           </label>
 
           <label className="field">
-            <span className="fieldLabel">AI model</span>
-            <select value={geminiModel} onChange={(e) => setGeminiModel(e.target.value)}>
-              {GEMINI_MODEL_OPTIONS.map((o) => (
+            <span className="fieldLabel">AI provider</span>
+            <select value={llmProvider} onChange={(e) => setLlmProvider(e.target.value)}>
+              {LLM_PROVIDER_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
             </select>
           </label>
-          <label className="field">
-            <span className="fieldLabel">Custom Gemini model ID</span>
-            <input
-              placeholder="Optional, e.g. a future Gemini 3.1 model code"
-              value={customGeminiModel}
-              onChange={(e) => setCustomGeminiModel(e.target.value)}
-            />
-          </label>
 
-          <label className="field">
-            <span className="fieldLabel">Gemini API key</span>
-            <input
-              type="password"
-              placeholder="AIza..."
-              value={geminiApiKey}
-              onChange={(e) => setGeminiApiKey(e.target.value)}
-            />
-          </label>
+          {llmProvider === "gemini" && (
+            <>
+              <label className="field">
+                <span className="fieldLabel">Gemini model</span>
+                <select value={geminiModel} onChange={(e) => setGeminiModel(e.target.value)}>
+                  {GEMINI_MODEL_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                <span className="fieldLabel">Custom Gemini model ID</span>
+                <input
+                  placeholder="Optional, e.g. a future model code"
+                  value={customGeminiModel}
+                  onChange={(e) => setCustomGeminiModel(e.target.value)}
+                />
+              </label>
+            </>
+          )}
+
+          {llmProvider === "opencode-go" && (
+            <label className="field">
+              <span className="fieldLabel">Model</span>
+              <select value={openCodeModel} onChange={(e) => setOpenCodeModel(e.target.value)}>
+                {OPENCODE_MODEL_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {llmProvider === "openai-compatible" && (
+            <>
+              <label className="field">
+                <span className="fieldLabel">Model name</span>
+                <input
+                  placeholder="e.g. gpt-4o, claude-3-5-sonnet"
+                  value={openCodeModel}
+                  onChange={(e) => setOpenCodeModel(e.target.value)}
+                />
+              </label>
+              <label className="field">
+                <span className="fieldLabel">Base URL</span>
+                <input
+                  placeholder={OPENCODE_GO_BASE_URL}
+                  value={llmBaseUrl}
+                  onChange={(e) => setLlmBaseUrl(e.target.value)}
+                />
+              </label>
+            </>
+          )}
+
+          {llmProvider !== "none" && (
+            <label className="field">
+              <span className="fieldLabel">
+                {llmProvider === "gemini" ? "Gemini API key" : "API key"}
+              </span>
+              <input
+                type="password"
+                placeholder={llmProvider === "gemini" ? "AIza..." : "sk-..."}
+                value={geminiApiKey}
+                onChange={(e) => setGeminiApiKey(e.target.value)}
+              />
+            </label>
+          )}
         </article>
 
         <article className="panel">
@@ -644,7 +726,7 @@ export function ConfigureClient() {
             <span className="fieldLabel">Custom ranking prompt</span>
             <textarea
               rows={4}
-              placeholder="Tell Gemini exactly how to rank streams for you."
+              placeholder="Tell the AI exactly how to rank streams for you."
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
             />

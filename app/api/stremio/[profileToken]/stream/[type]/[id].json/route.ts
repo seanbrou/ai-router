@@ -97,7 +97,7 @@ export async function GET(_: Request, { params }: RouteProps) {
       requestKey: `${type}:${id}:${Date.now()}`,
       mediaType: type,
       mediaId: id,
-      model: profile.gemini.model,
+      model: profile.llm?.model ?? "none",
       providerCount: enabledProviders.length,
       streamCount: ranked.length,
     });

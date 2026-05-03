@@ -39,9 +39,11 @@ const editorProfileValidator = v.object({
   name: v.string(),
   preferences: preferenceValidator,
   providers: v.array(providerInputValidator),
-  gemini: v.object({
-    hasApiKey: v.boolean(),
+  llm: v.object({
+    provider: v.string(),
+    apiKey: v.union(v.string(), v.null()),
     model: v.string(),
+    baseUrl: v.optional(v.union(v.string(), v.null())),
   }),
 });
 
@@ -50,9 +52,11 @@ const installProfileValidator = v.object({
   installToken: v.string(),
   preferences: preferenceValidator,
   providers: v.array(providerInputValidator),
-  gemini: v.object({
+  llm: v.object({
+    provider: v.string(),
     apiKey: v.union(v.string(), v.null()),
     model: v.string(),
+    baseUrl: v.optional(v.union(v.string(), v.null())),
   }),
 });
 
@@ -247,9 +251,11 @@ export const getEditorProfile = query({
         enabled: provider.enabled,
         sortOrder: provider.sortOrder,
       })),
-      gemini: {
-        hasApiKey: Boolean(secret?.geminiApiKey),
+      llm: {
+        provider: secret?.llmProvider ?? "none",
+        apiKey: secret?.geminiApiKey ?? null,
         model: secret?.geminiModel ?? "gemini-3.1-flash-lite-preview",
+        baseUrl: secret?.llmBaseUrl ?? null,
       },
     };
   },
@@ -263,6 +269,8 @@ export const saveProfile = mutation({
     providers: v.array(providerInputValidator),
     geminiApiKey: v.union(v.string(), v.null()),
     geminiModel: v.string(),
+    llmProvider: v.optional(v.string()),
+    llmBaseUrl: v.optional(v.union(v.string(), v.null())),
   },
   returns: v.object({
     installToken: v.string(),
@@ -321,19 +329,20 @@ export const saveProfile = mutation({
 
       const secret = await getSecretByProfileId(ctx, profile._id);
       try {
+        const secretData = {
+          geminiApiKey: args.geminiApiKey,
+          geminiModel: args.geminiModel.trim() || "gemini-3.1-flash-lite-preview",
+          llmProvider: args.llmProvider ?? "none",
+          llmBaseUrl: args.llmBaseUrl ?? null,
+          updatedAt: timestamp,
+        };
         if (secret) {
-          await ctx.db.patch(secret._id, {
-            geminiApiKey: args.geminiApiKey,
-            geminiModel: args.geminiModel.trim() || "gemini-3.1-flash-lite-preview",
-            updatedAt: timestamp,
-          });
+          await ctx.db.patch(secret._id, secretData);
         } else {
           await ctx.db.insert("profileSecrets", {
             profileId: profile._id,
-            geminiApiKey: args.geminiApiKey,
-            geminiModel: args.geminiModel.trim() || "gemini-3.1-flash-lite-preview",
+            ...secretData,
             createdAt: timestamp,
-            updatedAt: timestamp,
           });
         }
       } catch (e: any) {
@@ -455,9 +464,11 @@ export const getInstallProfile = query({
         enabled: provider.enabled,
         sortOrder: provider.sortOrder,
       })),
-      gemini: {
+      llm: {
+        provider: secret?.llmProvider ?? "none",
         apiKey: secret?.geminiApiKey ?? null,
         model: secret?.geminiModel ?? "gemini-3.1-flash-lite-preview",
+        baseUrl: secret?.llmBaseUrl ?? null,
       },
     };
   },

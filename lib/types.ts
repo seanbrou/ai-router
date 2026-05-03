@@ -9,6 +9,15 @@ export type ProfilePreferences = {
   customPrompt?: string | null;
 };
 
+export type LlmProviderType = "gemini" | "opencode-go" | "openai-compatible" | "none";
+
+export type LlmConfig = {
+  provider: LlmProviderType;
+  apiKey: string;
+  model: string;
+  baseUrl?: string;
+};
+
 export type DebridioConfig = {
   addonApiKey: string;
   provider: string;
@@ -45,10 +54,7 @@ export type InstallProfile = {
   installToken: string;
   preferences: ProfilePreferences;
   providers: ProviderDraft[];
-  gemini: {
-    apiKey: string | null;
-    model: string;
-  };
+  llm: LlmConfig;
 };
 
 export type StreamCandidate = {

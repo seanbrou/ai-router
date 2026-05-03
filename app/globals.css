@@ -239,6 +239,31 @@ body {
   font-size: 12px;
 }
 
+.field textarea {
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--text-primary);
+  padding: 10px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--speed), box-shadow var(--speed);
+  width: 100%;
+  resize: vertical;
+  min-height: 72px;
+}
+
+.field textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.field textarea::placeholder {
+  color: var(--text-quaternary);
+  font-size: 12px;
+}
+
 .fieldInline {
   display: flex;
   align-items: center;

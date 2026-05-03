@@ -88,6 +88,23 @@ export const PROVIDER_PRESET_OPTIONS = [
   { value: "custom", label: "Custom" },
 ];
 
+export const LLM_PROVIDER_OPTIONS = [
+  { value: "none", label: "None (deterministic ranking only)" },
+  { value: "gemini", label: "Gemini (Google AI)" },
+  { value: "opencode-go", label: "OpenCode Go (free for subscribers)" },
+  { value: "openai-compatible", label: "OpenAI-compatible (bring your own)" },
+];
+
+export const OPENCODE_MODEL_OPTIONS = [
+  { value: "qwen3.6-plus", label: "Qwen 3.6 Plus (recommended)" },
+  { value: "glm-5.1", label: "GLM 5.1" },
+  { value: "minimax-m2.7", label: "MiniMax M2.7" },
+  { value: "deepseek-v4-pro", label: "DeepSeek V4 Pro" },
+  { value: "kimi-k2.6", label: "Kimi K2.6" },
+  { value: "mimo-v2-pro", label: "Mimo V2 Pro" },
+  { value: "gemini-3.1-flash-lite-preview", label: "Gemini 3.1 Flash Lite" },
+];
+
 /* ── Defaults ────────────────────────────────────────────────────── */
 export const DEFAULT_PREFERENCES: ProfilePreferences = {
   preferredQualities: ["2160p", "1080p", "720p"],
